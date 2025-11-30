@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: agrobert-backend
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn -w 4 -b 0.0.0.0:$PORT backend.app_flask:app
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+      - key: DEBUG
+        value: false
+      - key: JWT_SECRET_KEY
+        generateValue: true
+      - key: PORT
+        value: 5000
+      - key: PYTHONUNBUFFERED
+        value: 1
+    healthCheckPath: /api/v1/health
+    healthCheckInterval: 30
+    healthCheckTimeout: 10
+    maxInstances: 1
+    minInstances: 1

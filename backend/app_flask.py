@@ -92,8 +92,14 @@ app = Flask(__name__, template_folder='../frontend', static_folder='../frontend'
 CORS(app)
 
 # --- JWT Configuration ---
-app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
+JWT_SECRET = os.getenv('JWT_SECRET_KEY', 'your-secret-key-change-in-production')
+app.config['JWT_SECRET_KEY'] = JWT_SECRET
 jwt = JWTManager(app)
+
+# --- Environment Detection ---
+IS_PRODUCTION = os.getenv('ENVIRONMENT', 'development').lower() in ['production', 'render']
+PORT = int(os.getenv('PORT', 5000))
+DEBUG_MODE = os.getenv('DEBUG', 'false').lower() == 'true' and not IS_PRODUCTION
 
 # --- Database Setup ---
 import os as os_module
@@ -1044,9 +1050,13 @@ if __name__ == '__main__':
     print("\n" + "="*60)
     print(" "*10 + "[OK] Server starting...")
     print("="*60)
-    print("\n[OK] Flask backend running at http://127.0.0.1:8000")
-    print("[OK] Frontend at http://127.0.0.1:5000")
+    print(f"\n[OK] Environment: {os.getenv('ENVIRONMENT', 'development')}")
+    print(f"[OK] Debug Mode: {DEBUG_MODE}")
+    print(f"[OK] Running on port: {PORT}")
+    print(f"[OK] Production Mode: {IS_PRODUCTION}")
     print(f"[OK] Demo Credentials: username='demo', password='demo123'")
     print("\n" + "="*60 + "\n")
     
-    app.run(host='127.0.0.1', port=8000, debug=True)
+    # Production: Use 0.0.0.0 for Render, Development: Use localhost
+    HOST = '0.0.0.0' if IS_PRODUCTION else '127.0.0.1'
+    app.run(host=HOST, port=PORT, debug=DEBUG_MODE)
