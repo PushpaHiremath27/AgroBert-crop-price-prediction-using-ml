@@ -1,0 +1,359 @@
+{
+  "info": {
+    "name": "AgroBERT API v2.0",
+    "description": "Complete API collection for AgroBERT - Agricultural Market Intelligence Platform",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "item": [
+    {
+      "name": "Health & Status",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/health",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "health"]
+            }
+          }
+        },
+        {
+          "name": "Get Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/status",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "status"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Agmarknet Prices",
+      "item": [
+        {
+          "name": "Get All Prices (Filtered)",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/agmarknet/prices?commodity=wheat&state=Punjab&market=Delhi",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "agmarknet", "prices"],
+              "query": [
+                {
+                  "key": "commodity",
+                  "value": "wheat"
+                },
+                {
+                  "key": "state",
+                  "value": "Punjab"
+                },
+                {
+                  "key": "market",
+                  "value": "Delhi"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Live Prices",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/agmarknet/live?commodity=wheat&market=Delhi&state=Haryana",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "agmarknet", "live"],
+              "query": [
+                {
+                  "key": "commodity",
+                  "value": "wheat"
+                },
+                {
+                  "key": "market",
+                  "value": "Delhi"
+                },
+                {
+                  "key": "state",
+                  "value": "Haryana"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Weather",
+      "item": [
+        {
+          "name": "Get Current Weather",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/weather/current?location=Delhi",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "weather", "current"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "Delhi"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Weather Forecast",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/weather/forecast?location=Mumbai&days=7",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "weather", "forecast"],
+              "query": [
+                {
+                  "key": "location",
+                  "value": "Mumbai"
+                },
+                {
+                  "key": "days",
+                  "value": "7"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "News",
+      "item": [
+        {
+          "name": "Get Latest News",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/news/latest?max_articles=20&sentiment_filter=positive",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "news", "latest"],
+              "query": [
+                {
+                  "key": "max_articles",
+                  "value": "20"
+                },
+                {
+                  "key": "sentiment_filter",
+                  "value": "positive"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Predictions",
+      "item": [
+        {
+          "name": "Get Price Prediction",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"commodity\": \"wheat\",\n  \"state\": \"Punjab\",\n  \"market\": \"Delhi\",\n  \"days_ahead\": 7\n}"
+            },
+            "url": {
+              "raw": "{{base_url}}/api/v1/predict",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "predict"]
+            }
+          }
+        },
+        {
+          "name": "Get 7-Day Forecast",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/forecast-7d?commodity=rice&market=Kolkata",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "forecast-7d"],
+              "query": [
+                {
+                  "key": "commodity",
+                  "value": "rice"
+                },
+                {
+                  "key": "market",
+                  "value": "Kolkata"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get 30-Day Forecast",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/forecast-30d?commodity=cotton&market=Mumbai",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "forecast-30d"],
+              "query": [
+                {
+                  "key": "commodity",
+                  "value": "cotton"
+                },
+                {
+                  "key": "market",
+                  "value": "Mumbai"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Training",
+      "item": [
+        {
+          "name": "Train Model",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/train?commodity=wheat&data_source=agmarknet",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "train"],
+              "query": [
+                {
+                  "key": "commodity",
+                  "value": "wheat"
+                },
+                {
+                  "key": "data_source",
+                  "value": "agmarknet"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Explainability (XAI)",
+      "item": [
+        {
+          "name": "Get SHAP Summary",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/xai/shap-summary?commodity=wheat&model=lstm",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "xai", "shap-summary"],
+              "query": [
+                {
+                  "key": "commodity",
+                  "value": "wheat"
+                },
+                {
+                  "key": "model",
+                  "value": "lstm"
+                }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get SHAP Instance",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/xai/shap-instance?commodity=wheat&instance_id=0",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "xai", "shap-instance"],
+              "query": [
+                {
+                  "key": "commodity",
+                  "value": "wheat"
+                },
+                {
+                  "key": "instance_id",
+                  "value": "0"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Recommendations",
+      "item": [
+        {
+          "name": "Get Crop Recommendation",
+          "request": {
+            "method": "POST",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/api/v1/recommend-crop?soil_type=black&rainfall=1500&ph=7.0&temperature=25&state=Maharashtra",
+              "host": ["{{base_url}}"],
+              "path": ["api", "v1", "recommend-crop"],
+              "query": [
+                {
+                  "key": "soil_type",
+                  "value": "black"
+                },
+                {
+                  "key": "rainfall",
+                  "value": "1500"
+                },
+                {
+                  "key": "ph",
+                  "value": "7.0"
+                },
+                {
+                  "key": "temperature",
+                  "value": "25"
+                },
+                {
+                  "key": "state",
+                  "value": "Maharashtra"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000",
+      "type": "string"
+    }
+  ]
+}

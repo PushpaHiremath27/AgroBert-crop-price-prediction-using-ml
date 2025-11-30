@@ -1,0 +1,48 @@
+﻿# Web Framework (Choose one)
+fastapi==0.104.1
+uvicorn[standard]==0.24.0
+flask==2.3.3
+flask-cors==4.0.0
+flask-jwt-extended==4.5.2
+
+# Configuration & Validation
+pydantic==2.5.0
+pydantic-settings==2.1.0
+
+# Database
+sqlalchemy==2.0.23
+
+# Data Science
+pandas>=2.2.0
+numpy>=1.26.4
+scikit-learn>=1.3.2
+scipy>=1.11.4
+
+# Web Scraping
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Security
+python-jose[cryptography]==3.3.0
+passlib[bcrypt]==1.7.4
+python-multipart==0.0.6
+pyjwt>=2.8.0
+werkzeug==2.3.7
+
+# API & Web
+httpx==0.25.2
+requests==2.31.0
+beautifulsoup4==4.12.2
+lxml==4.9.3
+
+# Caching
+python-dotenv==1.0.0
+
+# Frontend
+streamlit==1.29.0
+plotly==5.18.0
+
+# Utilities
+python-dateutil==2.8.2
+pytz==2023.3

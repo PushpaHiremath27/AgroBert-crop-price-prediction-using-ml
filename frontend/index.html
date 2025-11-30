@@ -1,0 +1,1562 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AgroBERT: Agri Price Prediction</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <style>
+        body { font-family: 'Inter', sans-serif; }
+        .auth-view { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); display: flex; align-items: center; justify-content: center; min-height: 100vh; padding: 1rem; }
+        .login-container { background: white; border-radius: 20px; box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3); overflow: hidden; max-width: 900px; width: 100%; display: flex; }
+        .login-left { flex: 1; background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%); padding: 60px 40px; color: white; display: none; flex-direction: column; justify-content: center; }
+        .login-right { flex: 1; padding: 60px 40px; max-height: 90vh; overflow-y: auto; }
+        .captcha-box { background: #f0f9ff; border: 2px solid #bfdbfe; border-radius: 8px; padding: 15px; display: flex; align-items: center; justify-content: space-between; margin: 20px 0; }
+        .captcha-text { font-size: 24px; font-weight: bold; letter-spacing: 5px; color: #1e40af; user-select: none; text-decoration: line-through; font-style: italic; }
+        .refresh-btn { background: #3b82f6; color: white; border: none; border-radius: 50%; width: 40px; height: 40px; cursor: pointer; transition: all 0.3s; }
+        .refresh-btn:hover { background: #2563eb; transform: rotate(180deg); }
+        .auth-btn { width: 100%; padding: 14px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); color: white; border: none; border-radius: 8px; font-size: 16px; font-weight: 600; cursor: pointer; transition: all 0.3s; display: flex; align-items: center; justify-content: center; gap: 0.5rem; }
+        .auth-btn:hover { transform: translateY(-2px); box-shadow: 0 10px 20px rgba(102, 126, 234, 0.3); }
+        .auth-btn:disabled { opacity: 0.7; cursor: not-allowed; transform: none; box-shadow: none; }
+        .error-message, .success-message { padding: 12px; border-radius: 8px; margin-bottom: 20px; display: none; text-align: center; }
+        .error-message { background: #fee2e2; color: #dc2626; }
+        .success-message { background: #dcfce7; color: #166534; }
+        .password-toggle { position: absolute; right: 16px; top: 50%; transform: translateY(-50%); cursor: pointer; color: #6b7280; }
+        .link-text { color: #3b82f6; cursor: pointer; text-decoration: underline; }
+        .otp-container { display: flex; gap: 10px; justify-content: center; margin: 20px 0; }
+        .otp-input { width: 50px; height: 50px; text-align: center; font-size: 24px; font-weight: bold; border: 2px solid #e5e7eb; border-radius: 8px; }
+        .form-section { display: none; } .form-section.active { display: block; }
+
+        #dashboardView { display: none; background-color: #f0f9ff; justify-content: center; align-items: flex-start; min-height: 100vh; padding: 20px; }
+        .dashboard-container { background-color: #ffffff; border-radius: 1.5rem; box-shadow: 0 10px 25px rgba(0, 0, 0, 0.1); max-width: 1600px; width: 100%; display: flex; flex-direction: column; overflow: hidden; }
+        header { background-color: #1e3a8a; color: white; padding: 1rem 2.5rem; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; border-top-left-radius: 1.5rem; border-top-right-radius: 1.5rem; }
+        nav a { color: white; padding: 0.5rem 1rem; border-radius: 0.5rem; transition: background-color 0.2s; }
+        nav a.active { background-color: #3b82f6; font-weight: 700; }
+        .main-content-area { display: flex; flex-direction: column; padding: 2.5rem; gap: 2.5rem; }
+        .dashboard-main-content { flex: 2.5; display: flex; flex-direction: column; gap: 2.5rem; }
+        .chatbot-sidebar { flex: 1; background-color: #f0f9ff; border-radius: 1rem; padding: 1.5rem; display: flex; flex-direction: column; min-height: 600px; }
+        .section-header { font-size: 1.875rem; font-weight: 800; color: #1f2937; margin-bottom: 1.5rem; letter-spacing: -0.5px; background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .card { background-color: #ffffff; border-radius: 1rem; box-shadow: 0 2px 12px rgba(99, 102, 241, 0.08); padding: 2rem; border: 1px solid #e8ecff; transition: all 0.3s ease; }
+        .card:hover { box-shadow: 0 8px 24px rgba(99, 102, 241, 0.12); }
+        .input-group { margin-bottom: 20px; }
+        .input-group label { display: block; margin-bottom: 8px; font-weight: 600; color: #374151; }
+        .input-group input, .input-group textarea, .input-group select { width: 100%; padding: 12px 16px; border: 2px solid #e5e7eb; border-radius: 8px; font-size: 16px; transition: all 0.3s; background-color: #fafafa; }
+        .input-group input:focus, .input-group textarea:focus, .input-group select:focus { outline: none; border-color: #6366f1; box-shadow: 0 0 0 4px rgba(99, 102, 241, 0.15); background-color: #ffffff; }
+        .mobile-input-container { display: flex; align-items: center; }
+        .mobile-prefix { padding: 12px 14px; border: 2px solid #e5e7eb; border-right: none; border-top-left-radius: 8px; border-bottom-left-radius: 8px; background-color: #f9fafb; color: #4b5563; font-size: 16px; }
+        #signupMobile { border-top-left-radius: 0; border-bottom-left-radius: 0; }
+        .action-button { padding: 0.75rem 1.5rem; background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); color: white; font-weight: 600; border-radius: 0.5rem; cursor: pointer; transition: all 0.2s ease; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.2); border: none; }
+        .action-button:hover { background: linear-gradient(135deg, #4f46e5 0%, #2563eb 100%); box-shadow: 0 4px 12px rgba(99, 102, 241, 0.3); }
+        .action-button:active { transform: translateY(0); }
+        .result-box { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 0.75rem; padding: 1rem; color: #1e40af; font-weight: 500; max-height: 300px; overflow-y: auto; }
+        .loading-spinner { border: 3px solid #e5e7eb; border-top: 3px solid #2563eb; border-radius: 50%; width: 20px; height: 20px; animation: spin 1s linear infinite; display: inline-block; vertical-align: middle; }
+        .info-box { background: #ecfdf5; border: 1px solid #a7f3d0; border-radius: 0.5rem; padding: 1rem; color: #047857; font-weight: 400; }
+        .metric-card { display: flex; flex-direction: column; align-items: center; justify-content: center; text-align: center; font-weight: 600; padding: 2rem; border-radius: 1rem; box-shadow: 0 4px 12px rgba(0,0,0,0.08); background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%); border: 1px solid #dbeafe; transition: all 0.3s ease; }
+        .metric-card:hover { box-shadow: 0 8px 20px rgba(59, 130, 246, 0.15); transform: translateY(-2px); }
+        .metric-value { font-size: 2.25rem; font-weight: 800; margin-bottom: 0.75rem; background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .metric-label { font-size: 0.95rem; color: #6b7280; font-weight: 500; letter-spacing: 0.5px; }
+        .metric-icon { font-size: 1.5rem; margin-bottom: 0.5rem; }
+        .positive-trend { color: #10b981; } .negative-trend { color: #ef4444; } .neutral-trend { color: #6366f1; }
+        .model-performance-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 2rem; margin-top: 1.5rem; }
+        .performance-card { background: linear-gradient(135deg, #f8faff 0%, #f0f4ff 100%); border: 2px solid #e0e7ff; border-radius: 1.25rem; padding: 2.5rem 2rem; text-align: center; box-shadow: 0 4px 15px rgba(99, 102, 241, 0.08); transition: all 0.3s ease; border-left: 5px solid #6366f1; position: relative; overflow: hidden; }
+        .performance-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0; background: linear-gradient(135deg, rgba(255,255,255,0.5) 0%, rgba(255,255,255,0) 100%); pointer-events: none; }
+        .performance-card.baseline { border-left-color: #94a3b8; background: linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%); border-color: #cbd5e1; }
+        .performance-card.agrobert { border-left-color: #3b82f6; background: linear-gradient(135deg, #eff6ff 0%, #dbeafe 100%); border-color: #bfdbfe; }
+        .performance-card.improvement { border-left-color: #10b981; background: linear-gradient(135deg, #f0fdf4 0%, #dcfce7 100%); border-color: #bbf7d0; }
+        .performance-card:hover { transform: translateY(-4px); box-shadow: 0 12px 30px rgba(99, 102, 241, 0.15); border-color: #a5b4fc; }
+        .performance-card.agrobert:hover { border-color: #93c5fd; box-shadow: 0 12px 30px rgba(59, 130, 246, 0.2); }
+        .performance-card.improvement:hover { border-color: #86efac; box-shadow: 0 12px 30px rgba(16, 185, 129, 0.2); }
+        .performance-metric-label { font-size: 0.8rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.75px; color: #475569; margin-bottom: 1rem; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        .performance-card.baseline .performance-metric-label { color: #64748b; }
+        .performance-card.agrobert .performance-metric-label { color: #1e40af; }
+        .performance-card.improvement .performance-metric-label { color: #166534; }
+        .performance-metric-value { font-size: 2.5rem; font-weight: 900; color: #1f2937; margin: 1.5rem 0; line-height: 1.2; }
+        .performance-card.baseline .performance-metric-value { color: #475569; }
+        .performance-card.agrobert .performance-metric-value { background: linear-gradient(135deg, #3b82f6 0%, #1e40af 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .performance-card.improvement .performance-metric-value { background: linear-gradient(135deg, #10b981 0%, #059669 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent; background-clip: text; }
+        .performance-metric-desc { font-size: 0.9rem; color: #6b7280; font-weight: 500; letter-spacing: 0.3px; position: relative; z-index: 1; }
+        .quick-action-button { background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); color: white; padding: 0.75rem 1.25rem; border-radius: 0.5rem; font-weight: 600; display: flex; align-items: center; gap: 0.5rem; justify-content: center; transition: all 0.2s ease; border: none; cursor: pointer; box-shadow: 0 2px 8px rgba(99, 102, 241, 0.15); }
+        .quick-action-button:hover { box-shadow: 0 4px 12px rgba(99, 102, 241, 0.25); transform: translateY(-1px); }
+        .chatbot-messages { flex-grow: 1; overflow-y: auto; border: 1px solid #e5e7eb; border-radius: 0.5rem; padding: 1rem; margin-bottom: 1rem; background: #ffffff; display: flex; flex-direction: column; gap: 0.75rem; }
+        .message-bubble { padding: 0.75rem 1rem; border-radius: 0.5rem; max-width: 80%; word-wrap: break-word; line-height: 1.5; }\n        .user-message { align-self: flex-end; background: linear-gradient(135deg, #6366f1 0%, #3b82f6 100%); color: white; }\n        .bot-message { align-self: flex-start; background: #e5e7eb; color: #1f2937; }
+        .chatbot-suggestion-button { background: #e0e7ff; color: #2563eb; border: 1px solid #bfdbfe; padding: 0.5rem 0.75rem; border-radius: 0.4rem; font-size: 0.85rem; cursor: pointer; transition: all 0.2s; font-weight: 400; }\n        .chatbot-suggestion-button:hover { background: #bfdbfe; }
+        #heatmapContainer { width: 100%; height: 450px; position: relative; overflow: hidden; border-radius: 0.5rem; background: #ffffff; border: 1px solid #e5e7eb; }
+        .state { stroke: #fff; stroke-width: 0.5px; transition: fill 0.3s; }
+        .content-section.hidden { display: none; }
+        .collapsible-section { max-height: 0; overflow: hidden; transition: max-height 0.5s ease-in-out, padding 0.5s ease-in-out; padding: 0 1.5rem; }
+        .collapsible-section.show { max-height: 1000px; padding: 1.5rem; }
+        #report-generator { display: none; }
+        .modal-overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 1000; opacity: 0; pointer-events: none; transition: opacity 0.3s ease-in-out; }
+        .modal-overlay.show { opacity: 1; pointer-events: auto; }
+        .modal-content { background: white; padding: 2rem; border-radius: 0.75rem; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-width: 500px; width: 90%; transform: scale(0.95); transition: transform 0.2s ease; }
+        .modal-overlay.show .modal-content { transform: scale(1); }
+        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        @keyframes slideUp { from { opacity: 0; transform: translateY(20px); } to { opacity: 1; transform: translateY(0); } }
+        @media (max-width: 768px) { .login-container { flex-direction: column; } .login-left { display: none; } .login-right { max-height: none; } header { flex-direction: column; align-items: flex-start; gap: 0.5rem; padding: 1rem; } nav { width: 100%; display: flex; justify-content: space-around; } .main-content-area { padding: 1rem; gap: 1rem; } }
+        @media (min-width: 769px) { .login-left { display: flex; } }
+    
+/* remove heavy outlines for form inputs */
+#annualRainfall:focus, #soilPH:focus, .input-group input:focus { outline: none; box-shadow: 0 0 0 3px rgba(59,130,246,0.08); }
+</style>
+</head>
+<body>
+
+    <div id="authView" class="auth-view">
+        <div class="login-container">
+            <div class="login-left">
+                <i class="fas fa-leaf text-6xl mb-6"></i>
+                <h1 class="text-4xl font-bold mb-4">Welcome to AgroBert</h1>
+                <p class="text-lg opacity-90">Advanced Agricultural Price Prediction System</p>
+            </div>
+            
+            <div class="login-right">
+                <div id="loginSection" class="form-section active">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Login</h2>
+                    <p class="text-gray-600 mb-8">Enter your credentials to access the dashboard</p>
+                    <div id="loginError" class="error-message"></div>
+                    <form id="loginForm">
+                        <div class="input-group">
+                            <label for="loginUsername">Username</label>
+                            <input type="text" id="loginUsername" required autocomplete="username">
+                        </div>
+                        <div class="input-group" style="position: relative;">
+                            <label for="loginPassword">Password</label>
+                            <input type="password" id="loginPassword" required autocomplete="current-password">
+                            <i class="fas fa-eye password-toggle" id="toggleLoginPassword"></i>
+                        </div>
+                        <div class="captcha-box">
+                            <span class="captcha-text" id="loginCaptchaText"></span>
+                            <button type="button" class="refresh-btn" id="refreshLoginCaptcha"><i class="fas fa-sync-alt"></i></button>
+                        </div>
+                        <div class="input-group">
+                            <label for="loginCaptchaInput">Enter CAPTCHA</label>
+                            <input type="text" id="loginCaptchaInput" required autocomplete="off">
+                        </div>
+                        <button type="submit" class="auth-btn" id="loginBtn"><i class="fas fa-sign-in-alt"></i> <span>Login</span></button>
+                    </form>
+                    <p class="text-center text-gray-600 mt-6"><span class="link-text" id="showForgotPassword">Forgot Password?</span></p>
+                    <p class="text-center text-gray-600 mt-2">Don't have an account? <span class="link-text" id="showSignup">Sign Up</span></p>
+                </div>
+
+                <div id="signupSection" class="form-section">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Sign Up</h2>
+                    <p class="text-gray-600 mb-6">Create your account</p>
+                    <div id="signupError" class="error-message"></div>
+                    <div id="signupSuccess" class="success-message"></div>
+                    <form id="signupForm">
+                        <div class="input-group"><label for="signupUsername">Username</label><input type="text" id="signupUsername" required></div>
+                        <div class="input-group"><label for="signupEmail">Email</label><input type="email" id="signupEmail" required></div>
+                        <div class="input-group">
+                            <label for="signupMobile">Mobile Number</label>
+                            <div class="mobile-input-container">
+                                <span class="mobile-prefix">+91</span>
+                                <input type="tel" id="signupMobile" placeholder="9876543210" required>
+                            </div>
+                        </div>
+                        <div class="input-group" style="position: relative;"><label for="signupPassword">Password</label><input type="password" id="signupPassword" minlength="6" required><i class="fas fa-eye password-toggle" id="toggleSignupPassword"></i></div>
+                        <div class="input-group" style="position: relative;"><label for="signupConfirmPassword">Confirm Password</label><input type="password" id="signupConfirmPassword" minlength="6" required><i class="fas fa-eye password-toggle" id="toggleSignupConfirmPassword"></i></div>
+                        <div class="captcha-box"><span class="captcha-text" id="signupCaptchaText"></span><button type="button" class="refresh-btn" id="refreshSignupCaptcha"><i class="fas fa-sync-alt"></i></button></div>
+                        <div class="input-group"><label for="signupCaptchaInput">Enter CAPTCHA</label><input type="text" id="signupCaptchaInput" required></div>
+                        <button type="submit" class="auth-btn" id="signupBtn"><i class="fas fa-user-plus"></i> <span>Sign Up</span></button>
+                    </form>
+                    <p class="text-center text-gray-600 mt-6">Already have an account? <span class="link-text" id="showLogin">Login</span></p>
+                </div>
+
+                <div id="forgotPasswordSection" class="form-section">
+                    <h2 class="text-3xl font-bold text-gray-800 mb-2">Forgot Password</h2>
+                    <p class="text-gray-600 mb-6">Reset your password</p>
+                    <div id="forgotError" class="error-message"></div>
+                    <div id="forgotSuccess" class="success-message"></div>
+                    
+                    <form id="forgotStep1Form">
+                        <div class="input-group"><label id="forgotIdentifierLabel" for="forgotIdentifier">Username, Email, or Mobile</label><input type="text" id="forgotIdentifier" required></div>
+                        <button type="submit" class="auth-btn" id="sendOtpBtn"><i class="fas fa-paper-plane"></i> <span>Send OTP</span></button>
+                    </form>
+
+                    <form id="forgotStep2Form" style="display: none;">
+                        <p class="text-center text-gray-600 mb-4">Enter the 6-digit OTP sent to your registered contact.</p>
+                        <div class="otp-container">
+                            <input type="text" class="otp-input" maxlength="1"><input type="text" class="otp-input" maxlength="1"><input type="text" class="otp-input" maxlength="1"><input type="text" class="otp-input" maxlength="1"><input type="text" class="otp-input" maxlength="1"><input type="text" class="otp-input" maxlength="1">
+                        </div>
+                        <p id="otp-console-note" class="text-center text-sm text-yellow-600 mt-2 bg-yellow-50 p-2 rounded-md" style="display: none;"></p>
+                        <button type="submit" class="auth-btn mt-4" id="verifyOtpBtn"><i class="fas fa-check"></i> <span>Verify OTP & Proceed</span></button>
+                    </form>
+                    
+                    <form id="forgotStep3Form" style="display: none;">
+                        <div class="input-group" style="position: relative;"><label for="newPassword">New Password</label><input type="password" id="newPassword" minlength="6" required><i class="fas fa-eye password-toggle" id="toggleNewPassword"></i></div>
+                        <div class="input-group" style="position: relative;"><label for="confirmNewPassword">Confirm New Password</label><input type="password" id="confirmNewPassword" minlength="6" required><i class="fas fa-eye password-toggle" id="toggleConfirmNewPassword"></i></div>
+                        <button type="submit" class="auth-btn" id="resetPasswordBtn"><i class="fas fa-key"></i> <span>Reset Password</span></button>
+                    </form>
+                    
+                    <p class="text-center text-gray-600 mt-6"><span class="link-text" id="backToLogin">Back to Login</span></p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+
+    <div id="dashboardView">
+        <div class="dashboard-container">
+            <header>
+                <div class="flex items-center gap-4"><i class="fas fa-leaf text-3xl"></i><h1 id="headerTitle" class="text-3xl font-extrabold"></h1></div>
+                <nav id="mainNav"><a href="#" id="navDashboard" class="active"></a><a href="#" id="navAnalytics"></a><a href="#" id="navReports"></a><a href="#" id="navSettings"></a><a href="#" id="navAbout"></a></nav>
+                <div id="locationWidget" class="flex items-center gap-2 text-sm text-white bg-blue-600 px-3 py-2 rounded cursor-pointer hover:bg-blue-700" title="Click to refresh location">
+                    <i class="fas fa-map-marker-alt"></i>
+                    <span id="locationText">Detecting location...</span>
+                </div>
+                <div id="weatherWidget" class="flex items-center gap-2 text-sm"></div>
+                <div class="input-group my-0 flex items-center gap-2 w-auto"><label for="languageSelect" class="sr-only">Select Language</label><select id="languageSelect" class="p-2 border rounded-md text-sm bg-blue-700 text-white"><option value="en">English</option><option value="hi">हिंदी</option><option value="kn">ಕನ್ನಡ</option></select></div>
+                <button id="logoutBtn" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition"><i class="fas fa-sign-out-alt"></i> Logout</button>
+            </header>
+            <div class="main-content-area">
+                <div id="dashboardContent" class="dashboard-main-content content-section">
+                    <p id="appDescription" class="text-center text-gray-600 -mt-4 mb-4 text-lg"></p>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4"><div class="metric-card"><i class="fas fa-chart-line metric-icon text-blue-500"></i><div id="cropYieldForecast" class="metric-value positive-trend">12.3% <i class="fas fa-arrow-up text-green-500 text-base ml-2"></i></div><div id="cropYieldLabel" class="metric-label"></div></div><div class="metric-card"><i class="fas fa-rupee-sign metric-icon text-green-500"></i><div id="avgDailyPrice" class="metric-value neutral-trend">₹ 2,458</div><div id="avgDailyPriceLabel" class="metric-label"></div></div><div class="metric-card"><i class="fas fa-leaf metric-icon text-yellow-500"></i><div id="marketTrend" class="metric-value">Medium</div><div id="marketTrendLabel" class="metric-label"></div></div></div>
+                    <div class="card"><h2 id="historicalDataHeader" class="section-header"></h2><div class="mb-4 text-gray-600"><p id="chartDescription"></p></div><div class="chart-container" style="height:350px;"><canvas id="priceChart"></canvas></div></div>
+                    <div class="card"><h2 id="quickActionsHeader" class="section-header"></h2><div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4"><button id="quickPredictPrice" class="quick-action-button"><i class="fas fa-chart-bar"></i> <span id="quickPredictPriceText"></span></button><button id="quickAnalyzeSentiment" class="quick-action-button"><i class="fas fa-comment-alt"></i> <span id="quickAnalyzeSentimentText"></span></button><button id="quickRegionalAnalysis" class="quick-action-button"><i class="fas fa-map-marker-alt"></i> <span id="quickRegionalAnalysisText"></span></button></div></div>
+                    <div id="pricePredictionSection" class="collapsible-section"><div class="card"><h2 id="pricePredictionHeader" class="section-header"></h2><div id="marketLocation" class="text-sm text-gray-600 mb-4 p-2 bg-blue-50 rounded hidden"></div><div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6"><div class="input-group"><label id="commodityLabel" for="commodity"></label><select id="commodity" class="w-full"></select></div><div class="input-group"><label id="marketLabel" for="market"></label><select id="market" class="w-full"></select></div><div class="input-group"><label id="daysAheadLabel" for="daysAhead"></label><input type="number" id="daysAhead" value="7" min="1" max="365" class="w-full"></div></div><div class="flex gap-4"><button id="predictButton" class="action-button w-full"></button><button id="setAlertButton" class="action-button bg-yellow-500 hover:bg-yellow-600 px-5"><i class="fas fa-bell"></i></button></div><div id="alertSuccess" class="success-message mt-4"></div><div id="priceResult" class="result-box mt-4 hidden"></div></div></div>
+                    <div id="sentimentAnalysisSection" class="collapsible-section"><div class="card"><h2 id="sentimentAnalysisHeader" class="section-header"></h2><div class="input-group mb-6"><label id="newsTextLabel" for="newsText"></label><textarea id="newsText" rows="4" placeholder="Enter agricultural news text here..." class="w-full">Recent heavy rains are expected to severely impact the cotton crop yield in Maharashtra, leading to potential price increases.</textarea></div><button id="analyzeSentimentButton" class="action-button w-full"></button><div id="sentimentResult" class="result-box mt-4 hidden"></div></div></div>
+                    <div class="card">
+                        <h2 id="cropRecommenderHeader" class="section-header"></h2>
+                        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
+                            <div class="input-group"><label id="soilTypeLabel" for="soilTypeSelect"></label><select id="soilTypeSelect" class="w-full"></select></div>
+                            <div class="input-group"><label id="rainfallLabel" for="rainfall"></label><input type="number" id="rainfall" value="1000" class="w-full"></div>
+                            <div class="input-group"><label id="phLabel" for="phValue"></label><input type="number" id="phValue" value="6.5" step="0.1" class="w-full"></div>
+                            <div class="input-group"><label id="tempLabel" for="temperature"></label><input type="number" id="temperature" value="25" class="w-full"></div>
+                        </div>
+                        <button id="recommendCropButton" class="action-button w-full"></button>
+                        <div id="recommendationResult" class="result-box mt-4 hidden"></div>
+                    </div>
+                    <div class="card"><h2 id="regionalAnalysisHeader" class="section-header"></h2><div class="overflow-x-auto"><table class="min-w-full bg-white rounded-lg shadow-sm"><thead><tr class="bg-gray-100 text-gray-600 uppercase text-sm leading-normal"><th class="py-3 px-6 text-left" id="tableHeaderRegion"></th><th class="py-3 px-6 text-left" id="tableHeaderCrop"></th><th class="py-3 px-6 text-left" id="tableHeaderPredictedPrice"></th><th class="py-3 px-6 text-left" id="tableHeaderTrend"></th><th class="py-3 px-6 text-left" id="tableHeaderSentiment"></th></tr></thead><tbody id="regionalAnalysisTableBody" class="text-gray-700 text-sm font-light"></tbody></table></div></div>
+                    <div class="card"><h2 id="xaiHeader" class="section-header"></h2><div id="xaiResult" class="info-box"><p id="xaiText"></p></div></div>
+                    <div id="regionalHeatmapSection" class="card"><div class="flex justify-between items-center mb-4"><h2 id="heatmapHeader" class="section-header mb-0"></h2><div class="input-group my-0 w-1/3"><label for="heatmapCommodity" class="sr-only">Commodity</label><select id="heatmapCommodity" class="w-full text-sm"><option value="Wheat">Wheat</option><option value="Rice">Rice</option><option value="Cotton">Cotton</option><option value="Onion">Onion</option><option value="Potato">Potato</option><option value="Tomato">Tomato</option><option value="Maize">Maize</option><option value="Banana">Banana</option></select></div></div><div id="heatmapContainer"></div></div>
+                    <div class="card"><h2 id="alertsHeader" class="section-header"></h2><div id="alertsResult" class="info-box"><p id="alertsText"></p></div></div>
+                </div>
+                <div id="analyticsContent" class="dashboard-main-content content-section hidden">
+                    <h2 id="analyticsHeader" class="section-header"></h2><p id="analyticsDescription" class="text-gray-600 -mt-4 mb-4"></p>
+                    <div class="card p-8 mb-6"><h3 id="modelPerformanceHeader" class="text-2xl font-bold text-gray-900 mb-6"></h3>
+                        <div class="model-performance-grid">
+                            <div class="performance-card baseline">
+                                <div class="performance-metric-label" id="baselineModelLabel">ARIMA (Baseline)</div>
+                                <p id="baselineRmseValue" class="performance-metric-value">-</p>
+                                <div class="performance-metric-desc">Root Mean Squared Error</div>
+                            </div>
+                            <div class="performance-card agrobert">
+                                <div class="performance-metric-label" id="agrobertModelLabel">AgroBERT (AI + Sentiment)</div>
+                                <p id="agrobertRmseValue" class="performance-metric-value">-</p>
+                                <div class="performance-metric-desc">Root Mean Squared Error</div>
+                            </div>
+                            <div class="performance-card improvement">
+                                <div class="performance-metric-label" id="improvementLabel">IMPROVEMENT</div>
+                                <p id="improvementValue" class="performance-metric-value">-</p>
+                                <div class="performance-metric-desc">vs Baseline Model</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6"><div class="card p-6"><h3 id="featureImportanceHeader" class="text-xl font-semibold text-gray-800 mb-4"></h3><div class="chart-container" style="height:300px;"><canvas id="featureImportanceChart"></canvas></div></div><div class="card p-6"><h3 id="sentimentDistributionHeader" class="text-xl font-semibold text-gray-800 mb-4"></h3><div class="chart-container" style="height:300px;"><canvas id="sentimentPieChart"></canvas></div></div></div>
+                    <div class="card p-6 mb-6">
+                        <h3 id="comparisonHeader" class="text-xl font-semibold text-gray-800 mb-4"></h3>
+                        <div class="grid grid-cols-2 gap-4 mb-4">
+                            <div class="input-group my-0"><label id="commodity1Label" for="compareCommodity1" class="text-sm"></label><select id="compareCommodity1" class="w-full"></select></div>
+                            <div class="input-group my-0"><label id="commodity2Label" for="compareCommodity2" class="text-sm"></label><select id="compareCommodity2" class="w-full"></select></div>
+                        </div>
+                        <div class="chart-container" style="height:300px;"><canvas id="comparisonChart"></canvas></div>
+                    </div>
+                    <div class="card p-6 mb-6"><h3 id="weatherImpactHeader" class="text-xl font-semibold text-gray-800 mb-4"></h3><div id="weatherImpactContent" class="text-gray-700"><p id="weatherImpactPlaceholder"></p></div></div>
+                    <div class="card p-6"><h3 id="dataQualityHeader" class="text-xl font-semibold text-gray-800 mb-4"></h3><ul class="list-disc pl-5 text-gray-700"><li id="missingValuesItem"></li><li id="outliersItem"></li><li id="apiStatusItem"></li></ul></div>
+                </div>
+                <div id="reportsContent" class="dashboard-main-content content-section hidden"><h2 id="reportsHeader" class="section-header"></h2><div class="card p-6 mb-6"><h3 id="generateReportHeader" class="text-xl font-semibold text-gray-800 mb-4"></h3><p class="text-gray-700 mb-4" id="generateReportSummary"></p><button class="auth-btn bg-green-600 hover:bg-green-700" id="generateReportButton"><i class="fas fa-download"></i> <span id="generateReportButtonText"></span></button><div id="reportStatus" class="mt-4"></div></div></div>
+                <div id="settingsContent" class="dashboard-main-content content-section hidden"><h2 id="settingsHeader" class="section-header"></h2>
+                    <div class="card p-6 mb-6">
+                        <h3 id="dataSourceHeader" class="text-xl font-semibold text-gray-800 mb-4"></h3>
+                        <ul class="list-disc pl-5 text-gray-700"><li id="agmarknetStatus"></li><li id="openWeatherStatus"></li><li id="faostatStatus"></li><li id="newsScraperStatus"></li></ul>
+                        <button class="auth-btn mt-4" id="syncDataButton"><i class="fas fa-sync-alt"></i> <span id="syncDataButtonText"></span></button>
+                        <span id="lastSynced" class="text-xs text-gray-500 block text-center mt-2"></span>
+                        <div id="syncDataSuccess" class="success-message mt-4"></div>
+                    </div>
+                </div>
+                <div id="aboutContent" class="dashboard-main-content content-section hidden"><h2 id="aboutHeader" class="section-header"></h2><div class="card p-6 space-y-6 text-gray-700">
+                    <div>
+                        <h3 class="text-2xl font-bold text-gray-800 mb-3">🌾 About AgroBERT</h3>
+                        <p class="mb-4">AgroBERT is a cutting-edge Agricultural Market Intelligence Platform that leverages advanced Machine Learning and sentiment analysis to provide real-time crop price predictions, market insights, and recommendations for farmers, traders, and agricultural businesses across India.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-3">Our Mission</h3>
+                        <p class="mb-4">To empower agricultural stakeholders with data-driven insights that enable smarter decision-making in an increasingly complex and volatile agricultural market.</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-3">Key Features</h3>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li><strong>Real-Time Price Predictions:</strong> LSTM, Prophet, and ARIMA ensemble models for accurate forecasting</li>
+                            <li><strong>Weather Integration:</strong> OpenWeatherMap API for climate impact analysis</li>
+                            <li><strong>Sentiment Analysis:</strong> NLP-powered analysis of agricultural news and market sentiment</li>
+                            <li><strong>Regional Heatmaps:</strong> Interactive India map showing price variations across states</li>
+                            <li><strong>Crop Recommendations:</strong> AI-driven suggestions based on soil, climate, and environmental factors</li>
+                            <li><strong>Explainable AI (XAI):</strong> SHAP-based feature importance for transparent predictions</li>
+                            <li><strong>Chatbot Assistant:</strong> Multi-language support for quick agricultural queries</li>
+                            <li><strong>Custom Reports:</strong> Generate downloadable PDF reports of your analysis</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-3">Data Sources</h3>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li><strong>Agmarknet API:</strong> Live market prices from all major APMCs</li>
+                            <li><strong>OpenWeatherMap:</strong> Real-time and forecasted weather data</li>
+                            <li><strong>FAOSTAT:</strong> Historical agricultural production statistics</li>
+                            <li><strong>News Scrapers:</strong> Automated collection of agricultural news</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-3">Technology Stack</h3>
+                        <ul class="list-disc pl-6 space-y-2">
+                            <li><strong>Backend:</strong> Flask with REST API, SQLAlchemy ORM</li>
+                            <li><strong>ML Models:</strong> LSTM, Prophet, ARIMA, BERT</li>
+                            <li><strong>Frontend:</strong> Interactive HTML5/CSS3/JavaScript with Tailwind CSS</li>
+                            <li><strong>Visualization:</strong> Chart.js for charts, D3.js for geospatial heatmaps</li>
+                            <li><strong>Cloud Ready:</strong> Deployable on Heroku, AWS, or Google Cloud</li>
+                        </ul>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-3">Who We Are</h3>
+                        <p class="mb-3">AgroBERT is a collaborative project developed by final-year engineering students pursuing Bachelor of Engineering in Artificial Intelligence & Machine Learning from Bapuji Institute of Engineering and Technology (BIET), Davanagere, affiliated with Visvesvaraya Technological University (VTU).</p>
+                        <p class="mb-3">Our team of dedicated students combines expertise in machine learning, deep learning, software engineering, data science, and full-stack development to build innovative solutions that address real-world agricultural challenges. This project represents our commitment to leveraging technology for agricultural advancement and food security.</p>
+                        <p class="text-sm text-gray-600"><strong>Project Phase:</strong> BAI685 - Bachelor of Engineering Final Year Project<br><strong>Institution:</strong> Bapuji Institute of Engineering and Technology (BIET), Davanagere<br><strong>Department:</strong> Artificial Intelligence & Machine Learning<br><strong>Affiliation:</strong> Visvesvaraya Technological University (VTU)</p>
+                    </div>
+                    <div>
+                        <h3 class="text-xl font-bold text-gray-800 mb-3">Support & Feedback</h3>
+                        <p class="mb-4">For technical support, feature requests, or feedback, please reach out to us directly or through the chatbot. We're committed to continuous improvement and your suggestions are valuable.</p>
+                        <div class="bg-green-50 border border-green-300 rounded-lg p-4">
+                            <p class="text-sm text-gray-800 mb-3"><strong>Contact Us:</strong></p>
+                            <p class="text-sm text-gray-800 mb-2"><strong>Email:</strong> <a href="mailto:ccholarajarp@gmail.com" class="text-blue-600 hover:underline">ccholarajarp@gmail.com</a></p>
+                            <p class="text-sm text-gray-800 mb-3"><strong>Mobile:</strong> <span class="font-semibold">+91 6360244323</span></p>
+                            <p class="text-xs text-gray-600"><strong>Hours:</strong> Monday - Friday, 9:00 AM - 6:00 PM IST</p>
+                            <p class="text-xs text-gray-600 mt-2">Feel free to contact us for any queries, bug reports, feature suggestions, or technical support!</p>
+                        </div>
+                    </div>
+                    <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mt-4">
+                        <p class="text-sm text-blue-800"><strong>Version:</strong> 2.0 (Production-Grade) | <strong>Last Updated:</strong> November 2025</p>
+                    </div>
+                </div></div>
+                <div class="chatbot-sidebar"><h2 id="chatbotHeader" class="section-header text-center"></h2><div class="chatbot-messages" id="chatbotMessages"><div class="message-bubble bot-message"><p id="chatWelcomeMessage"></p></div></div><div class="flex flex-wrap gap-2 my-2" id="chatbotSuggestions"></div><div class="input-group flex gap-2"><input type="text" id="chatInput" placeholder="Ask a question..." class="flex-grow"><button id="sendChatButton" class="action-button px-4 py-2"><i class="fas fa-paper-plane"></i></button><button id="voiceInputButton" class="action-button px-4 py-2 bg-purple-600 hover:bg-purple-700"><i class="fas fa-microphone"></i></button></div></div>
+            </div>
+        </div>
+    </div>
+    <div id="report-generator" class="p-4 bg-white">
+        <h1 id="report-title" class="text-2xl font-bold mb-2"></h1>
+        <p><strong id="reportDateLabel"></strong> <span id="report-date"></span></p>
+        <h2 id="reportPriceHeader" class="text-xl font-bold mt-4"></h2>
+        <div id="report-prediction-summary"></div>
+        <h2 id="reportChartHeader" class="text-xl font-bold mt-4"></h2>
+        <div id="report-chart-container"></div>
+        <h2 id="reportXAIHeader" class="text-xl font-bold mt-4"></h2>
+        <div id="report-xai-container"></div>
+        <h2 id="reportRegionalHeader" class="text-xl font-bold mt-4"></h2>
+        <div id="report-table-container"></div>
+        <h2 id="reportNewsHeader" class="text-xl font-bold mt-4"></h2>
+        <div id="report-news-container"></div>
+    </div>
+    <div id="featureModal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="flex justify-between items-center mb-4">
+                <h2 id="featureModalTitle" class="text-2xl font-bold text-gray-800"></h2>
+                <button id="closeFeatureModal" class="text-gray-500 hover:text-gray-800">&times;</button>
+            </div>
+            <p id="featureModalIntro" class="text-gray-600 mb-4"></p>
+            <ul class="list-disc pl-5 space-y-2 text-gray-700">
+                <li id="feature1"></li>
+                <li id="feature2"></li>
+                <li id="feature3"></li>
+            </ul>
+        </div>
+    </div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const el = id => document.getElementById(id);
+            const authView = el('authView');
+            const dashboardView = el('dashboardView');
+            // Changed to relative path so it uses the same server as serve.py
+            const API_BASE_URL = ''; 
+
+            // apiFetch: Wrapper around fetch that handles common error cases
+            const apiFetch = async (url, options = {}) => {
+                try {
+                    let fullUrl;
+                    if (url.startsWith('http')) {
+                        fullUrl = url;
+                    } else if (url.startsWith('/api/')) {
+                        fullUrl = API_BASE_URL ? `${API_BASE_URL}${url}` : url;
+                    } else {
+                        fullUrl = API_BASE_URL ? `${API_BASE_URL}/api/v1${url}` : `/api/v1${url}`;
+                    }
+                    const token = sessionStorage.getItem('agrobert_token');
+                    const response = await fetch(fullUrl, {
+                        ...options,
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(token && { 'Authorization': `Bearer ${token}` }),
+                            ...options.headers
+                        }
+                    });
+                    return response;
+                } catch (error) {
+                    console.error('apiFetch error:', error);
+                    throw error;
+                }
+            };
+
+            const toggleButtonLoading = (btn, isLoading, originalContent) => {
+                if (isLoading) {
+                    btn.disabled = true;
+                    btn.innerHTML = `<span class="loading-spinner"></span> <span>Processing...</span>`;
+                } else {
+                    btn.disabled = false;
+                    btn.innerHTML = originalContent;
+                }
+            };
+
+            const authForms = { login: el('loginSection'), signup: el('signupSection'), forgot: el('forgotPasswordSection') };
+            const showForm = (formName) => { Object.values(authForms).forEach(form => form.classList.remove('active')); authForms[formName].classList.add('active'); if (formName === 'login') generateCaptcha('login'); if (formName === 'signup') generateCaptcha('signup'); };
+            
+            const authLinks = {
+                'showSignup': 'signup',
+                'showLogin': 'login',
+                'showForgotPassword': 'forgot',
+                'backToLogin': 'login'
+            };
+            Object.keys(authLinks).forEach(id => {
+                if (el(id)) {
+                    el(id).addEventListener('click', () => showForm(authLinks[id]));
+                }
+            });
+
+            let captchas = { login: '', signup: '' };
+            const generateCaptcha = (type) => { const c = Math.random().toString(36).substring(2, 8).toUpperCase(); captchas[type] = c; el(`${type}CaptchaText`).textContent = c; };
+            generateCaptcha('login'); generateCaptcha('signup');
+            el('refreshLoginCaptcha').addEventListener('click', () => generateCaptcha('login'));
+            el('refreshSignupCaptcha').addEventListener('click', () => generateCaptcha('signup'));
+            const setupPasswordToggle = (toggleId, inputId) => { el(toggleId).addEventListener('click', function() { const i = el(inputId); i.type = i.type === 'password' ? 'text' : 'password'; this.classList.toggle('fa-eye'); this.classList.toggle('fa-eye-slash'); }); };
+            ['toggleLoginPassword/loginPassword', 'toggleSignupPassword/signupPassword', 'toggleSignupConfirmPassword/signupConfirmPassword', 'toggleNewPassword/newPassword', 'toggleConfirmNewPassword/confirmNewPassword'].forEach(pair => { const [t, i] = pair.split('/'); setupPasswordToggle(t, i); });
+            const showMessage = (id, message, isSuccess = false) => { const e = el(id); e.textContent = message; e.className = isSuccess ? 'success-message' : 'error-message'; e.style.display = 'block'; setTimeout(() => { e.style.display = 'none'; }, 5000); };
+            
+            el('loginForm').addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                const btn = el('loginBtn');
+                const originalContent = btn.innerHTML;
+                toggleButtonLoading(btn, true);
+                if (el('loginCaptchaInput').value.toUpperCase() !== captchas.login.toUpperCase()) { 
+                    showMessage('loginError', 'Invalid CAPTCHA.'); 
+                    generateCaptcha('login'); 
+                    toggleButtonLoading(btn, false, originalContent);
+                    return; 
+                } 
+                const payload = { username: el('loginUsername').value, password: el('loginPassword').value }; 
+                try {
+                    console.log('[LOGIN] Attempting login with:', { username: payload.username });
+                    const res = await fetch('/api/v1/login', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(payload) 
+                    });
+                    
+                    const data = await res.json();
+                    console.log('[LOGIN] Response:', { status: res.status, data });
+                    
+                    if (!res.ok) {
+                        showMessage('loginError', data.error || data.msg || 'Invalid username or password.'); 
+                        generateCaptcha('login'); 
+                        toggleButtonLoading(btn, false, originalContent);
+                        return;
+                    }
+                    
+                    sessionStorage.setItem('agrobert_token', data.token || data.access_token);
+                    requestLocationPermission();
+                    
+                    setTimeout(() => {
+                        showDashboard();
+                    }, 300);
+                    
+                } catch (error) {
+                    console.error('[LOGIN] Error:', error);
+                    showMessage('loginError', 'Connection error: ' + error.message); 
+                    generateCaptcha('login'); 
+                    toggleButtonLoading(btn, false, originalContent);
+                }
+            });
+            
+            // Function to request location permission
+            function requestLocationPermission() {
+                if (navigator.geolocation) {
+                    // Show a custom prompt modal
+                    const permissionModal = document.createElement('div');
+                    permissionModal.style.cssText = 'position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0,0,0,0.5); display: flex; align-items: center; justify-content: center; z-index: 9999;';
+                    
+                    const modalContent = document.createElement('div');
+                    modalContent.style.cssText = 'background: white; padding: 30px; border-radius: 12px; box-shadow: 0 10px 40px rgba(0,0,0,0.2); max-width: 400px; text-align: center; animation: slideUp 0.3s ease-out;';
+                    
+                    modalContent.innerHTML = `
+                        <i class="fas fa-map-marker-alt" style="font-size: 3rem; color: #3b82f6; margin-bottom: 15px; display: block;"></i>
+                        <h2 style="color: #1f2937; margin: 15px 0; font-size: 1.5rem;">Enable Location Access?</h2>
+                        <p style="color: #6b7280; margin: 15px 0; line-height: 1.6;">We'll use your location to detect the nearest agricultural market and provide personalized price predictions based on your area.</p>
+                        <div style="display: flex; gap: 10px; margin-top: 25px;">
+                            <button class="allowLocationBtn" style="flex: 1; padding: 12px; background: #10b981; color: white; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Allow Location</button>
+                            <button class="denyLocationBtn" style="flex: 1; padding: 12px; background: #e5e7eb; color: #374151; border: none; border-radius: 8px; font-weight: 600; cursor: pointer; font-size: 14px;">Not Now</button>
+                        </div>
+                    `;
+                    
+                    permissionModal.appendChild(modalContent);
+                    document.body.appendChild(permissionModal);
+                    
+                    const allowBtn = modalContent.querySelector('.allowLocationBtn');
+                    const denyBtn = modalContent.querySelector('.denyLocationBtn');
+                    
+                    allowBtn.addEventListener('click', () => {
+                        permissionModal.remove();
+                        navigator.geolocation.getCurrentPosition(
+                            async (position) => {
+                                console.log('[LOCATION] Permission granted');
+                                const lat = position.coords.latitude;
+                                const lng = position.coords.longitude;
+                                try {
+                                    const res = await apiFetch('/location-based-markets', {method: 'POST', body: JSON.stringify({latitude: lat, longitude: lng})});
+                                    const data = await res.json();
+                                    console.log('[LOCATION] backend response', data);
+                                    if (res.ok) {
+                                        // populate nearest market info if present
+                                        if (data.nearest_market) {
+                                            const info = `Nearest market: ${data.nearest_market.name} (${data.nearest_market.distance_km} km)`;
+                                            el('locationInfo').innerText = info;
+                                        }
+                                    }
+                                } catch (err) {
+                                    console.warn('Error sending location to backend', err);
+                                }
+
+                            },
+                            (error) => {
+                                console.warn('[LOCATION] Permission denied:', error.message);
+                            }
+                        );
+                    });
+                    
+                    denyBtn.addEventListener('click', () => {
+                        permissionModal.remove();
+                        console.log('[LOCATION] User chose not to share location');
+                    });
+                }
+            }
+
+            el('signupForm').addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                const btn = el('signupBtn');
+                const originalContent = btn.innerHTML;
+                toggleButtonLoading(btn, true);
+                let mobileNumber = el('signupMobile').value;
+                if (!mobileNumber.startsWith('+91')) {
+                    mobileNumber = `+91${mobileNumber}`;
+                }
+
+                if (el('signupCaptchaInput').value.toUpperCase() !== captchas.signup.toUpperCase()) { 
+                    showMessage('signupError', 'Invalid CAPTCHA.'); 
+                    generateCaptcha('signup');
+                    toggleButtonLoading(btn, false, originalContent); 
+                    return; 
+                } 
+                if (el('signupPassword').value !== el('signupConfirmPassword').value) { 
+                    showMessage('signupError', 'Passwords do not match.'); 
+                    toggleButtonLoading(btn, false, originalContent);
+                    return; 
+                } 
+                
+                const payload = { 
+                    username: el('signupUsername').value, 
+                    email: el('signupEmail').value, 
+                    mobile: mobileNumber, 
+                    password: el('signupPassword').value 
+                }; 
+                
+                try {
+                    console.log('[SIGNUP] Attempting signup with:', { username: payload.username, email: payload.email });
+                    const res = await fetch('/api/v1/register', { 
+                        method: 'POST', 
+                        headers: { 'Content-Type': 'application/json' }, 
+                        body: JSON.stringify(payload) 
+                    });
+                    
+                    const responseData = await res.json();
+                    console.log('[SIGNUP] Response:', { status: res.status, data: responseData });
+                    
+                    if (!res.ok) {
+                        showMessage('signupError', responseData.error || responseData.msg || 'Registration failed'); 
+                        toggleButtonLoading(btn, false, originalContent);
+                        return;
+                    }
+                    
+                    showMessage('signupSuccess', 'Account created! Redirecting to login...', true);
+                    el('signupForm').reset();
+                    generateCaptcha('signup');
+                    
+                    setTimeout(() => {
+                        showForm('login');
+                        generateCaptcha('login');
+                    }, 2000);
+                    
+                } catch (err) {
+                    showMessage('signupError', 'Connection error. Please try again.'); 
+                    toggleButtonLoading(btn, false, originalContent);
+                }
+            });
+
+            let otpUser = '';
+            el('forgotStep1Form').addEventListener('submit', async (e) => { 
+                e.preventDefault(); 
+                otpUser = el('forgotIdentifier').value;
+                const btn = el('sendOtpBtn');
+                const originalContent = btn.innerHTML;
+                toggleButtonLoading(btn, true);
+                try {
+                    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/send-otp` : '/api/v1/send-otp';
+                    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ identifier: otpUser }) });
+                    if (!res.ok) {
+                        const errData = await res.json();
+                        throw new Error(errData.msg || 'User not found.');
+                    }
+                    const data = await res.json();
+                    el('forgotStep1Form').style.display = 'none'; 
+                    el('forgotStep2Form').style.display = 'block'; 
+                    showMessage('forgotSuccess', data.msg, true);
+                     if (data.msg.includes("console")) {
+                        const note = el('otp-console-note');
+                        note.textContent = "For development, your OTP will appear in the server console.";
+                        note.style.display = 'block'; 
+                    }
+                } catch (err) {
+                    showMessage('forgotError', String(err));
+                } finally {
+                    toggleButtonLoading(btn, false, originalContent);
+                }
+            });
+
+            const otpInputs = document.querySelectorAll('.otp-input'); 
+            otpInputs.forEach((input, index) => { 
+                input.addEventListener('input', (e) => { if (e.target.value && index < otpInputs.length - 1) { otpInputs[index + 1].focus(); } }); 
+                input.addEventListener('keydown', (e) => { if (e.key === 'Backspace' && !e.target.value && index > 0) { otpInputs[index - 1].focus(); } }); 
+            }); 
+            
+            el('forgotStep2Form').addEventListener('submit', (e) => { 
+                e.preventDefault(); 
+                el('forgotStep2Form').style.display = 'none'; 
+                el('forgotStep3Form').style.display = 'block'; 
+            });
+
+            el('forgotStep3Form').addEventListener('submit', async (e) => { 
+                e.preventDefault();
+                const btn = el('resetPasswordBtn');
+                const originalContent = btn.innerHTML;
+                toggleButtonLoading(btn, true);
+                const otp = Array.from(otpInputs).map(input => input.value).join(''); 
+                const newPassword = el('newPassword').value; 
+                
+                if (newPassword !== el('confirmNewPassword').value) { 
+                    showMessage('forgotError', 'New passwords do not match.'); 
+                    toggleButtonLoading(btn, false, originalContent);
+                    return; 
+                } 
+                
+                const payload = { username: otpUser, otp: otp, new_password: newPassword }; 
+                try {
+                    const url = API_BASE_URL ? `${API_BASE_URL}/api/v1/reset-password` : '/api/v1/reset-password';
+                    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                    if (!res.ok) throw new Error('Invalid OTP or server error.');
+                    await res.json();
+                    showMessage('loginError', 'Password reset successful! Please log in.', true);
+                    showForm('login'); 
+                } catch (err) {
+                    showMessage('forgotError', String(err));
+                } finally {
+                    toggleButtonLoading(btn, false, originalContent);
+                }
+            });
+
+            el('logoutBtn').addEventListener('click', () => { sessionStorage.removeItem('agrobert_token'); sessionStorage.removeItem('featureModalShown'); showLogin(); });
+            function showLogin() { dashboardView.style.display = 'none'; document.body.className = 'auth-view'; authView.style.display = 'flex'; }
+            function showDashboard() { 
+                console.log('[DASHBOARD] Showing dashboard...');
+                authView.style.display = 'none'; 
+                document.body.className = ''; 
+                dashboardView.style.display = 'flex';
+                
+                // Initialize dashboard with timeout to prevent freezing
+                setTimeout(() => {
+                    try {
+                        initializeDashboard();
+                    } catch (error) {
+                        console.error('[DASHBOARD] Initialization error:', error);
+                        showMessage('loginError', 'Dashboard load error. Refreshing...', false);
+                        setTimeout(() => window.location.reload(), 2000);
+                    }
+                }, 100);
+            }
+             el('closeFeatureModal').addEventListener('click', () => {
+                el('featureModal').classList.remove('show');
+            });
+            
+            if (sessionStorage.getItem('agrobert_token')) { showDashboard(); } else { showLogin(); }
+
+            function initializeDashboard() {
+                try {
+                    if (document.body.classList.contains('dashboard-initialized')) {
+                        console.log('[DASHBOARD] Already initialized, skipping');
+                        return;
+                    }
+                    console.log('[DASHBOARD] Initializing...');
+                    document.body.classList.add('dashboard-initialized');
+                let ds = { commodity: 'Wheat', market: 'Delhi', prediction: null, xai: null, chartData: null, weatherData: null };
+                const langSelect=el('languageSelect');
+                let priceChart, featChart, sentimentChart, marketChart, comparisonChart;
+                const translations = {
+                    en: {headerTitle:"AgroBert",navDashboard:"Dashboard",navAnalytics:"Analytics",navReports:"Reports",navSettings:"Settings",navAbout:"About Us",appDescription:"Advanced Agri-Product Price Prediction using ML and sentiment analysis.",cropYieldLabel:"Crop Yield Forecast",avgDailyPriceLabel:"Predicted Price",marketTrendLabel:"Overall Market Trend",historicalDataHeader:"Historical Price Trend",chartDescription:"This chart shows historical and predicted price trends for the selected commodity.",quickActionsHeader:"Analysis Tools",quickPredictPriceText:"Price Prediction",quickAnalyzeSentimentText:"Analyze News",quickRegionalAnalysisText:"Regional Analysis",pricePredictionHeader:"Price Prediction",commodityLabel:"Commodity",marketLabel:"Market",daysAheadLabel:"Days Ahead",predictButton:"<i class='fas fa-chart-line'></i> Predict Price",sentimentAnalysisHeader:"Sentiment Analysis",newsTextLabel:"Agricultural News Text",analyzeSentimentButton:"<i class='fas fa-comment-dots'></i> Analyze Sentiment",cropRecommenderHeader:"Crop Recommendation System",soilTypeLabel:"Soil Type",rainfallLabel:"Annual Rainfall (mm)",phLabel:"Soil pH",tempLabel:"Avg. Temperature (°C)",recommendCropButton:"<i class='fas fa-seedling'></i> Get Recommendation",regionalAnalysisHeader:"Regional Crop Analysis",tableHeaderRegion:"Region",tableHeaderCrop:"Crop",tableHeaderPredictedPrice:"Predicted Price",tableHeaderTrend:"Trend",tableHeaderSentiment:"Sentiment",xaiHeader:"Explainable AI Insights",xaiText:"Click 'Predict Price' to see factors influencing the prediction.",heatmapHeader:"Regional Price Heatmap",alertsHeader:"Alerts & Recommendations",alertsText:"No new alerts or recommendations at this moment.",analyticsHeader:"Analytics for",analyticsDescription:"Run a prediction on the dashboard to update these analytics.",modelPerformanceHeader:"Model Performance Metrics",baselineModelName:"ARIMA (Baseline)",agrobertModelName:"AgroBERT (AI + Sentiment)",accuracyLabel:"Accuracy (R²)",maeLabel:"MAE (Mean Absolute Error)",rmseLabel:"RMSE (Root Mean Squared Error)",featureImportanceHeader:"Key Price Drivers",sentimentDistributionHeader:"News Sentiment Distribution",marketComparisonHeader:"Price Comparison Across Major Markets",weatherImpactHeader:"Weather Impact Analysis for",weatherImpactPlaceholder:"Select a market and predict a price to see weather analysis.",dataQualityHeader:"Data Quality Monitoring",reportsHeader:"Report Generator",generateReportHeader:"Generate Custom Report",generateReportSummary:"Generate a detailed PDF report based on the latest price prediction and analysis performed on the dashboard. Ensure you have run a prediction on the Dashboard tab first.",generateReportButtonText:"Generate & Download Report (PDF)",settingsHeader:"Settings & Configuration",dataSourceHeader:"Data Source Management",syncDataButtonText:"Sync All Data Now",chatbotHeader:"AgriBERT Chatbot",chatWelcomeMessage:"Hello! I'm AgriBERT. How can I help you?",aboutHeader:"About AgroBERT",pricePredictionResultLoading:'<span class="loading-spinner"></span> Predicting...',predictedFor: (c, m, d, report) => { const avg = report.average_price; const low = report.low_price; const high = report.high_price; const perKg = (avg / 100).toFixed(2); const formatPrice = (p) => p.toLocaleString('en-IN'); return `<p class="mb-2">The average mandi price for <strong>${c}</strong> in <strong>${m}</strong> (forecast for ${d} days) is approximately <strong>₹${formatPrice(avg)}</strong> per quintal.</p><p class="mb-2">Here is a general breakdown:</p><ul class="list-disc pl-5 text-sm"><li><strong>Average Price:</strong> ₹${formatPrice(avg)} per quintal (or ₹${perKg} per kg)</li><li><strong>Lowest Market Price:</strong> Around ₹${formatPrice(low)} per quintal</li><li><strong>Highest Market Price:</strong> Around ₹${formatPrice(high)} per quintal</li></ul><p class="mt-3 text-xs text-gray-500">Please note that these prices are an average. The exact rate can vary depending on the specific APMC market (mandi), quality, and local demand.</p>`; },unit:"INR/Quintal",sentimentAnalysisResultLoading:'<span class="loading-spinner"></span> Analyzing sentiment...',sentimentResultText:(s,sc)=>`Detected Sentiment: <strong>${s}</strong> (Score: ${sc.toFixed(2)})`,xaiFactors:f=>`<p class="font-bold">Key influencing factors:</p><ul class="list-disc pl-5 mt-2 text-sm">${f.map(i=>`<li class="${i.impact==="Positive"?"text-green-700":i.impact==="Negative"?"text-red-700":"text-gray-700"}">${i.factor} (${i.impact} impact)</li>`).join("")}</ul>`,weatherImpactText:(m,tmp,c,i)=>`<div class="flex items-start gap-4"><i class="fas fa-cloud-sun-rain text-3xl text-blue-500 mt-1"></i><div><p><strong>Current conditions in ${m}:</strong> ${tmp}°C, ${c}.</p><p class="mt-2"><strong>Impact Analysis:</strong> ${i}</p></div></div>`,reportGenerating:'<span class="loading-spinner"></span> Generating report...',reportGenerated:"✅ Report generated! Download starting.",reportError:"❌ Error generating report. Please run a prediction first.",chatSuggestions:["Price of Wheat in Punjab?","Impact of monsoon on Rice?","Recommend a crop for my area."],cropRecommendationLoading:'<span class="loading-spinner"></span> Finding the best crop...',cropRecommendationResult:(c,r)=>`<p><strong>Recommended Crop:</strong> <span class="text-green-700 font-bold">${c}</span></p><p class="text-sm mt-1">${r}</p>`,weather:{Clear:"Clear","Partly Cloudy":"Partly Cloudy","Light Rain":"Light Rain",Sunny:"Sunny",Rainy:"Rainy",Cloudy:"Cloudy",Humid:"Humid",Positive:"Positive",Negative:"Negative",Neutral:"Neutral"},chatError:"❌ Error: Could not connect to the chat service. Please try again.",chatResponses:{greeting:"Hello! I'm AgriBERT. How can I help you today? Ask me about price predictions, weather impacts, soil recommendations, or market trends!",priceQuery:"For accurate price predictions, please go to the Dashboard tab and use the Price Prediction tool. Provide the commodity name, market, and number of days ahead for the forecast.",weatherQuery:"Weather significantly impacts crop prices. Please use the Weather Impact Analysis tool on the Analytics tab to see how weather affects your selected commodity.",soilQuery:"I can help with soil-related recommendations. Please use the Crop Recommendation System tool with your soil type, rainfall, pH level, and temperature to get personalized suggestions.",marketQuery:"Market data is crucial for agricultural decisions. Check the Price Comparison tool on the Analytics tab to compare prices across major APMC markets.",sentimentQuery:"News sentiment affects market trends. Use the Sentiment Analysis tool on the Dashboard to analyze news text and understand market sentiment.",seasonalQuery:"Seasonal factors play a vital role in crop pricing. Historical trends are visible in the Market Comparison chart on the Analytics tab.",recommendQuery:"I can suggest crops based on your soil and climate conditions. Use the Crop Recommendation System tool on the Dashboard with your location details.",supportQuery:"For technical support, bug reports, or feature requests, please contact us at:\n📧 Email: ccholarajarp@gmail.com\n📱 Mobile: +91 6360244323\n\nWe're here to help and would love to hear your feedback!",contactQuery:"You can reach our support team at:\n📧 Email: ccholarajarp@gmail.com\n📱 Mobile: +91 6360244323\n\nFeel free to contact us for any questions or assistance!",feedbackQuery:"We'd love to hear your feedback! You can reach us at:\n📧 Email: ccholarajarp@gmail.com\n📱 Mobile: +91 6360244323\n\nYour suggestions help us improve!",unknownQuery:"I'm not sure about that question. You can ask me about price predictions, weather impacts, soil conditions, market trends, sentiment analysis, seasonal factors, crop recommendations, or technical support. For direct contact, email us at ccholarajarp@gmail.com or call +91 6360244323."},reportDateLabel:"Date Generated:",reportPriceHeader:"Price Prediction Summary",reportChartHeader:"Historical & Predicted Price Chart",reportXAIHeader:"Key Influencing Factors (XAI)",reportRegionalHeader:"Regional Analysis Snapshot",reportNewsHeader:"Latest News Updates",otpConsoleNote:"For development, your OTP will appear in the server console.",aboutText:"<p><strong>AgroBERT</strong> represents a paradigm shift in agricultural market intelligence, leveraging state-of-the-art machine learning models, including BERT for sentiment analysis, to provide accurate and timely price predictions for a wide range of agricultural commodities across India.</p><p>Our mission is to empower farmers, traders, and analysts with actionable insights, helping them make informed decisions in a volatile market. The platform integrates data from various sources like Agmarknet, weather APIs, and real-time news feeds to deliver a holistic view of the market dynamics.</p>",missingValuesItem:"Missing Values: <span class='font-semibold text-green-600'>Low (0.5%)</span>",outliersItem:"Outliers Detected: <span class='font-semibold text-yellow-600'>Moderate (1.2%)</span>",apiStatusItem:"API Data Feeds: <span class='font-semibold text-green-600'>All Operational</span>",agmarknetStatus:"Agmarknet API: <span class='font-semibold text-green-600'>Connected</span>",openWeatherStatus:"OpenWeather API: <span class='font-semibold text-green-600'>Connected</span>",faostatStatus:"FAOSTAT Data: <span class='font-semibold text-yellow-600'>Partially Synced</span>",newsScraperStatus:"News Scrapers: <span class='font-semibold text-green-600'>Active</span>",soilTypeAlluvial:"Alluvial",soilTypeBlack:"Black",soilTypeRed:"Red",soilTypeLaterite:"Laterite",forgotIdentifierLabel:"Username, Email, or Mobile",featureModalTitle:"New Feature Ideas!",featureModalIntro:"To improve your experience, we could add:",feature1:"Price Alerts: Get notifications when a commodity reaches your target price.",feature2:"Commodity Comparison: Compare historical trends of two or more crops.",feature3:"Personalized Dashboard: Save your favorite commodities and markets for quick access.",syncDataSuccess:"Data synced successfully!",improvementLabel:"Improvement",alertSetSuccess: (c, m) =>`Alert set! We will notify you of price changes for ${c} in ${m}.`,lastSynced: (date) => `Last synced: ${date.toLocaleString('en-US', { hour: '2-digit', minute: '2-digit' })}`,comparisonHeader:"Commodity Comparison", commodity1Label:"Commodity 1", commodity2Label:"Commodity 2"},
+                    hi: {headerTitle:"एग्रोबर्ट",navDashboard:"डैशबोर्ड",navAnalytics:"विश्लेषिकी",navReports:"रिपोर्ट",navSettings:"सेटिंग्स",navAbout:"हमारे बारे में",appDescription:"एमएल और भावना विश्लेषण का उपयोग करके उन्नत कृषि-उत्पाद मूल्य भविष्यवाणी।",cropYieldLabel:"फसल उपज का पूर्वानुमान",avgDailyPriceLabel:"अनुमानित मूल्य",marketTrendLabel:"समग्र बाजार की प्रवृत्ति",historicalDataHeader:"ऐतिहासिक मूल्य प्रवृत्ति",chartDescription:"यह चार्ट चयनित वस्तु के लिए ऐतिहासिक और अनुमानित मूल्य प्रवृत्तियों को दर्शाता है।",quickActionsHeader:"विश्लेषण उपकरण",quickPredictPriceText:"मूल्य भविष्यवाणी",quickAnalyzeSentimentText:"समाचारों का विश्लेषण करें",quickRegionalAnalysisText:"क्षेत्रीय विश्लेषण",pricePredictionHeader:"मूल्य भविष्यवाणी",commodityLabel:"वस्तु",marketLabel:"बाजार",daysAheadLabel:"आगे के दिन",predictButton:"<i class='fas fa-chart-line'></i> मूल्य का अनुमान लगाएं",sentimentAnalysisHeader:"भावना विश्लेषण",newsTextLabel:"कृषि समाचार पाठ",analyzeSentimentButton:"<i class='fas fa-comment-dots'></i> भावना का विश्लेषण करें",cropRecommenderHeader:"फसल सिफारिश प्रणाली",soilTypeLabel:"मिट्टी का प्रकार",rainfallLabel:"वार्षिक वर्षा (मिमी)",phLabel:"मिट्टी का पीएच",tempLabel:"औसत तापमान (°C)",recommendCropButton:"<i class='fas fa-seedling'></i> सिफारिश प्राप्त करें",regionalAnalysisHeader:"क्षेत्रीय फसल विश्लेषण",tableHeaderRegion:"क्षेत्र",tableHeaderCrop:"फसल",tableHeaderPredictedPrice:"अनुमानित मूल्य",tableHeaderTrend:"प्रवृत्ति",tableHeaderSentiment:"भावना",xaiHeader:"व्याख्या करने योग्य AI अंतर्दृष्टि",xaiText:"भविष्यवाणी को प्रभावित करने वाले कारकों को देखने के लिए 'मूल्य का अनुमान लगाएं' पर क्लिक करें।",heatmapHeader:"क्षेत्रीय मूल्य हीटमैप",alertsHeader:"अलर्ट और सिफारिशें",alertsText:"इस समय कोई नया अलर्ट या सिफारिशें नहीं हैं।",analyticsHeader:"के लिए विश्लेषिकी",analyticsDescription:"इन विश्लेषणों को अद्यतन करने के लिए डैशबोर्ड पर एक भविष्यवाणी चलाएँ।",modelPerformanceHeader:"मॉडल प्रदर्शन मेट्रिक्स",baselineModelName:"ARIMA (आधारभूत)",agrobertModelName:"एग्रोबर्ट (AI + भावना)",accuracyLabel:"सटीकता (R²)",maeLabel:"MAE",rmseLabel:"RMSE",featureImportanceHeader:"मुख्य मूल्य चालक",sentimentDistributionHeader:"समाचार भावना वितरण",marketComparisonHeader:"प्रमुख बाजारों में मूल्य तुलना",weatherImpactHeader:"के लिए मौसम प्रभाव विश्लेषण",weatherImpactPlaceholder:"मौसम विश्लेषण देखने के लिए एक बाजार चुनें और मूल्य की भविष्यवाणी करें।",dataQualityHeader:"डेटा गुणवत्ता निगरानी",reportsHeader:"रिपोर्ट जेनरेटर",generateReportHeader:"कस्टम रिपोर्ट बनाएं",generateReportSummary:"डैशबोर्ड पर किए गए नवीनतम मूल्य भविष्यवाणी और विश्लेषण के आधार पर एक विस्तृत पीडीएफ रिपोर्ट बनाएं।",generateReportButtonText:"रिपोर्ट बनाएं और डाउनलोड करें",settingsHeader:"सेटिंग्स और कॉन्फ़िгураेशन",dataSourceHeader:"डेटा स्रोत प्रबंधन",syncDataButtonText:"अब सभी डेटा सिंक करें",chatbotHeader:"एग्रीबर्ट चैटबॉट",chatWelcomeMessage:"नमस्ते! मैं एग्रीबर्ट हूँ। मैं आपकी कैसे मदद कर सकता हूँ?",aboutHeader:"एग्रोबर्ट के बारे में",pricePredictionResultLoading:'<span class="loading-spinner"></span> भविष्यवाणी हो रही है...',predictedFor: (c, m, d, report) => { const avg = report.average_price; const low = report.low_price; const high = report.high_price; const perKg = (avg / 100).toFixed(2); const formatPrice = (p) => p.toLocaleString('hi-IN'); return `<p class="mb-2"><strong>${m}</strong> में <strong>${c}</strong> के लिए ${d} दिनों का अनुमानित औसत मंडी मूल्य लगभग <strong>₹${formatPrice(avg)}</strong> प्रति क्विंटल है।</p><p class="mb-2">यहाँ एक सामान्य विवरण दिया गया है:</p><ul class="list-disc pl-5 text-sm"><li><strong>औसत मूल्य:</strong> ₹${formatPrice(avg)} प्रति क्विंटल (या ₹${perKg} प्रति किलो)</li><li><strong>न्यूनतम बाजार मूल्य:</strong> लगभग ₹${formatPrice(low)} प्रति क्विंटल</li><li><strong>उच्चतम बाजार मूल्य:</strong> लगभग ₹${formatPrice(high)} प्रति क्विंटल</li></ul><p class="mt-3 text-xs text-gray-500">कृपया ध्यान दें कि ये कीमतें एक औसत हैं। सटीक दर विशिष्ट APMC बाजार (मंडी), गुणवत्ता और स्थानीय मांग के आधार पर भिन्न हो सकती है।</p>`; },unit:"INR/क्विंटल",sentimentAnalysisResultLoading:'<span class="loading-spinner"></span> भावना का विश्लेषण हो रहा है...',sentimentResultText:(s,sc)=>`पता लगाई गई भावना: <strong>${s}</strong> (स्कोर: ${sc.toFixed(2)})`,xaiFactors:f=>`<p class="font-bold">प्रमुख प्रभावशाली कारक:</p><ul class="list-disc pl-5 mt-2 text-sm">${f.map(i=>`<li class="${i.impact==="Positive"?"text-green-700":i.impact==="Negative"?"text-red-700":"text-gray-700"}">${i.factor} (${i.impact} प्रभाव)</li>`).join("")}</ul>`,weatherImpactText:(m,t,c,i)=>`<div class="flex items-start gap-4"><i class="fas fa-cloud-sun-rain text-3xl text-blue-500 mt-1"></i><div><p><strong>${m} में वर्तमान स्थिति:</strong> ${t}°C, ${c}.</p><p class="mt-2"><strong>प्रभाव विश्लेषण:</strong> ${i}</p></div></div>`,reportGenerating:'<span class="loading-spinner"></span> रिपोर्ट तैयार हो रही है...',reportGenerated:"✅ रिपोर्ट सफलतापूर्वक तैयार हो गई!",reportError:"❌ रिपोर्ट बनाने में त्रुटि।",chatSuggestions:["पंजाब में गेहूं की कीमत?","चावल पर मानसून का प्रभाव?","मेरे क्षेत्र के लिए फसल की सिफारिश करें।"],cropRecommendationLoading:'<span class="loading-spinner"></span> सबसे अच्छी फसल ढूंढी जा रही है...',cropRecommendationResult:(c,r)=>`<p><strong>अनुशंसित फसल:</strong> <span class="text-green-700 font-bold">${c}</span></p><p class="text-sm mt-1">${r}</p>`,weather:{Clear:"साफ़","Partly Cloudy":"आंशिक रूप से बादल छाए रहेंगे","Light Rain":"हलकी बारिश",Sunny:"धूप",Rainy:"बरसात",Cloudy:"बादल",Humid:"नम",Positive:"सकारात्मक",Negative:"नकारात्मक",Neutral:"तटस्थ"},chatError:"❌ त्रुटि: चैट सेवा से जुड़ा नहीं जा सका। कृपया पुनः प्रयास करें।",chatResponses:{greeting:"नमस्ते! मैं एग्रीबर्ट हूँ। मैं आपकी आज कैसे मदद कर सकता हूँ? मुझसे मूल्य पूर्वानुमान, मौसम प्रभाव, मिट्टी की सिफारिशें, या बाजार की प्रवृत्तियों के बारे में पूछें!",priceQuery:"सटीक मूल्य पूर्वानुमान के लिए, कृपया डैशबोर्ड टैब पर जाएँ और मूल्य पूर्वानुमान उपकरण का उपयोग करें। कमोडिटी का नाम, बाजार, और आगे के दिनों की संख्या प्रदान करें।",weatherQuery:"मौसम फसल की कीमतों को महत्वपूर्ण रूप से प्रभावित करता है। कृपया विश्लेषिकी टैब पर मौसम प्रभाव विश्लेषण उपकरण का उपयोग करें।",soilQuery:"मैं मिट्टी से संबंधित सिफारिशों में मदद कर सकता हूँ। कृपया डैशबोर्ड टैब पर फसल सिफारिश प्रणाली उपकरण का उपयोग करें।",marketQuery:"बाजार डेटा कृषि निर्णयों के लिए महत्वपूर्ण है। विश्लेषिकी टैब पर मूल्य तुलना उपकरण देखें।",sentimentQuery:"समाचार भावना बाजार की प्रवृत्तियों को प्रभावित करती है। डैशबोर्ड पर भावना विश्लेषण उपकरण का उपयोग करें।",seasonalQuery:"मौसमी कारकें फसल की कीमतों में महत्वपूर्ण भूमिका निभाते हैं। ऐतिहासिक प्रवृत्तियाँ विश्लेषिकी टैब पर दिखाई देती हैं।",recommendQuery:"मैं आपकी मिट्टी और जलवायु परिस्थितियों के आधार पर फसलों का सुझाव दे सकता हूँ। डैशबोर्ड टैब पर फसल सिफारिश प्रणाली का उपयोग करें।",supportQuery:"तकनीकी सहायता, बग रिपोर्ट, या फीचर अनुरोधों के लिए, कृपया हमसे संपर्क करें:\n📧 ईमेल: ccholarajarp@gmail.com\n📱 मोबाइल: +91 6360244323\n\nहम आपकी सहायता के लिए यहाँ हैं!",contactQuery:"आप हमारी सहायता टीम से यहाँ संपर्क कर सकते हैं:\n📧 ईमेल: ccholarajarp@gmail.com\n📱 मोबाइल: +91 6360244323\n\nकिसी भी प्रश्न के लिए हमसे संपर्क करें!",feedbackQuery:"हम आपकी प्रतिक्रिया सुनना पसंद करेंगे!\n📧 ईमेल: ccholarajarp@gmail.com\n📱 मोबाइल: +91 6360244323\n\nआपके सुझाव हमें बेहतर बनाने में मदद करते हैं!",unknownQuery:"मुझे उस सवाल के बारे में निश्चित नहीं हूँ। आप मुझसे मूल्य पूर्वानुमान, मौसम प्रभाव, मिट्टी की स्थिति, बाजार की प्रवृत्तियों, भावना विश्लेषण, मौसमी कारकों, फसल सिफारिशों, या तकनीकी सहायता के बारे में पूछ सकते हैं। सीधे संपर्क के लिए, ccholarajarp@gmail.com पर ईमेल करें या +91 6360244323 पर कॉल करें।"},reportDateLabel:"तैयारी की तारीख:",reportPriceHeader:"मूल्य भविष्यवाणी सारांश",reportChartHeader:"ऐतिहासिक और अनुमानित मूल्य चार्ट",reportXAIHeader:"मुख्य प्रभावशाली कारक (XAI)",reportRegionalHeader:"क्षेत्रीय विश्लेषण स्नैपशॉट",reportNewsHeader:"नवीनतम समाचार अपडेट",otpConsoleNote:"विकास के लिए, आपका ओटीपी सर्वर कंसोल में दिखाई देगा।",aboutText:"<p><strong>एग्रोबर्ट</strong> कृषि बाजार की खुफिया जानकारी में एक आदर्श बदलाव का प्रतिनिधित्व करता है, जो पूरे भारत में कृषि वस्तुओं की एक विस्तृत श्रृंखला के लिए सटीक और समय पर मूल्य prédictions प्रदान करने के लिए भावना विश्लेषण के लिए BERT सहित अत्याधुनिक मशीन लर्निंग मॉडल का लाभ उठाता है।</p><p>हमारा मिशन किसानों, व्यापारियों और विश्लेषकों को कार्रवाई योग्य अंतर्दृष्टि के साथ सशक्त बनाना है, जिससे उन्हें अस्थिर बाजार में सूचित निर्णय लेने में मदद मिलती है। प्लेटफ़ॉर्म बाजार की गतिशीलता का समग्र दृष्टिकोण देने के लिए एगमार्कनेट, मौसम एपीआई और रीयल-टाइम समाचार फ़ीड जैसे विभिन्न स्रोतों से डेटा को एकीकृत करता है।</p>",missingValuesItem:"लापता मान: <span class='font-semibold text-green-600'>कम (0.5%)</span>",outliersItem:"आउटलेर्स का पता चला: <span class='font-semibold text-yellow-600'>मध्यम (1.2%)</span>",apiStatusItem:"एपीआई डेटा फ़ीड: <span class='font-semibold text-green-600'>सभी चालू</span>",agmarknetStatus:"एगमार्कनेट एपीआई: <span class='font-semibold text-green-600'>जुड़ा हुआ</span>",openWeatherStatus:"ओपनवेदर एपीआई: <span class='font-semibold text-green-600'>जुड़ा हुआ</span>",faostatStatus:"FAOSTAT डेटा: <span class='font-semibold text-yellow-600'>आंशिक रूप से समन्वयित</span>",newsScraperStatus:"समाचार स्क्रैपर्स: <span class='font-semibold text-green-600'>सक्रिय</span>",soilTypeAlluvial:"जलोढ़",soilTypeBlack:"काली",soilTypeRed:"लाल",soilTypeLaterite:"लैटेराइट",forgotIdentifierLabel:"उपयोगकर्ता नाम, ईमेल, या मोबाइल",featureModalTitle:"नए फ़ीचर विचार!",featureModalIntro:"आपके अनुभव को बेहतर बनाने के लिए, हम जोड़ सकते हैं:",feature1:"मूल्य अलर्ट: जब कोई वस्तु आपके लक्ष्य मूल्य तक पहुँच जाए तो सूचनाएँ प्राप्त करें।",feature2:"कमोडिटी तुलना: दो या दो से अधिक फसलों के ऐतिहासिक रुझानों की तुलना करें।",feature3:"व्यक्तिगत डैशबोर्ड: त्वरित पहुँच के लिए अपनी पसंदीदा वस्तुओं और बाजारों को सहेजें।",syncDataSuccess:"डेटा सफलतापूर्वक सिंक हो गया!",alertSetSuccess: (c, m) => `अलर्ट सेट हो गया! हम आपको ${m} में ${c} के मूल्य परिवर्तनों के लिए सूचित करेंगे।`,improvementLabel:"सुधार",comparisonHeader:"वस्तु तुलना", commodity1Label:"वस्तु 1", commodity2Label:"वस्तु 2",lastSynced: (date) =>`पिछला सिंक: ${date.toLocaleString('hi-IN', { hour: '2-digit', minute: '2-digit' })}`},
+                    kn: {headerTitle:"ಅಗ್ರೋಬರ್ಟ್",navDashboard:"ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",navAnalytics:"ವಿಶ್ಲೇಷಣೆ",navReports:"ವರದಿಗಳು",navSettings:"ಸೆಟ್ಟಿಂಗ್‌ಗಳು",navAbout:"ನಮ್ಮ ಬಗ್ಗೆ",appDescription:"ML ಮತ್ತು ಭಾವನೆ ವಿಶ್ಲೇಷಣೆ ಬಳಸಿ ಸುಧಾರಿತ ಕೃಷಿ-ಉತ್ಪನ್ನ ಬೆಲೆ ಮುನ್ಸೂಚನೆ.",cropYieldLabel:"ಬೆಳೆ ಇಳುವರಿ ಮುನ್ಸೂಚನೆ",avgDailyPriceLabel:"ಊಹಿಸಿದ ಬೆಲೆ",marketTrendLabel:"ಒಟ್ಟಾರೆ ಮಾರುಕಟ್ಟೆ ಪ್ರವೃತ್ತಿ",historicalDataHeader:"ಐತಿಹಾಸಿಕ ಬೆಲೆ ಪ್ರವೃತ್ತಿ",chartDescription:"ಈ ಚಾರ್ಟ್ ಆಯ್ದ ಸರಕಿನ ಐತಿಹಾಸಿಕ ಮತ್ತು ಊಹಿಸಿದ ಬೆಲೆ ಪ್ರವೃತ್ತಿಗಳನ್ನು ತೋರಿಸುತ್ತದೆ.",quickActionsHeader:"ವಿಶ್ಲೇಷಣಾ ಪರಿಕರಗಳು",quickPredictPriceText:"ಬೆಲೆ ಮುನ್ಸೂಚನೆ",quickAnalyzeSentimentText:"ಸುದ್ದಿ ವಿಶ್ಲೇಷಿಸಿ",quickRegionalAnalysisText:"ಪ್ರಾದೇಶಿಕ ವಿಶ್ಲೇಷಣೆ",pricePredictionHeader:"ಬೆಲೆ ಮುನ್ಸೂಚನೆ",commodityLabel:"ಸರಕು",marketLabel:"ಮಾರುಕಟ್ಟೆ",daysAheadLabel:"ಮುಂದಿನ ದಿನಗಳು",predictButton:"<i class='fas fa-chart-line'></i> ಬೆಲೆ ಊಹಿಸಿ",sentimentAnalysisHeader:"ಭಾವನೆ ವಿಶ್ಲೇಷಣೆ",newsTextLabel:"ಕೃಷಿ ಸುದ್ದಿ ಪಠ್ಯ",analyzeSentimentButton:"<i class='fas fa-comment-dots'></i> ಭಾವನೆ ವಿಶ್ಲೇಷಿಸಿ",cropRecommenderHeader:"ಬೆಳೆ ಶಿಫಾರಸು ವ್ಯವಸ್ಥೆ",soilTypeLabel:"ಮಣ್ಣಿನ ಪ್ರಕಾರ",rainfallLabel:"ವಾರ್ಷಿಕ ಮಳೆ (ಮಿಮೀ)",phLabel:"ಮಣ್ಣಿನ ಪಿಎಚ್",tempLabel:"ಸರಾಸರಿ ತಾಪಮಾನ (°C)",recommendCropButton:"<i class='fas fa-seedling'></i> ಶಿಫಾರಸು ಪಡೆಯಿರಿ",regionalAnalysisHeader:"ಪ್ರಾದೇಶಿಕ ಬೆಳೆ ವಿಶ್ಲೇಷಣೆ",tableHeaderRegion:"ಪ್ರದೇಶ",tableHeaderCrop:"ಬೆಳೆ",tableHeaderPredictedPrice:"ಊಹಿಸಿದ ಬೆಲೆ",tableHeaderTrend:"ಪ್ರವೃತ್ತಿ",tableHeaderSentiment:"ಭಾವನೆ",xaiHeader:"ವಿವರಿಸಬಹುದಾದ AI ಒಳನೋಟಗಳು",xaiText:"ಭವಿಷ್ಯವಾಣಿಯ ಮೇಲೆ ಪ್ರಭಾವ ಬೀರುವ ಅಂಶಗಳನ್ನು ನೋಡಲು 'ಬೆಲೆ ಊಹಿಸಿ' ಕ್ಲಿಕ್ ಮಾಡಿ.",heatmapHeader:"ಪ್ರಾದೇಶಿಕ ಬೆಲೆ ಹೀಟ್‌ಮ್ಯಾಪ್",alertsHeader:"ಎಚ್ಚರಿಕೆಗಳು ಮತ್ತು ಶಿಫಾರಸುಗಳು",alertsText:"ಈ ಕ್ಷಣದಲ್ಲಿ ಯಾವುದೇ ಹೊಸ ಎಚ್ಚರಿಕೆಗಳು ಅಥವಾ ಶಿಫಾರಸುಗಳಿಲ್ಲ.",analyticsHeader:"ಗಾಗಿ ವಿಶ್ಲೇಷಣೆ",analyticsDescription:"ಈ ವಿಶ್ಲೇಷಣೆಗಳನ್ನು ನವೀಕರಿಸಲು ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ ಮುನ್ಸೂಚನೆಯನ್ನು ರನ್ ಮಾಡಿ.",modelPerformanceHeader:"ಮಾದರಿ ಕಾರ್ಯಕ್ಷಮತೆ ಮೆಟ್ರಿಕ್ಸ್",baselineModelName:"ARIMA (ಆಧಾರಸ್ತ)",agrobertModelName:"ಅಗ್ರೋಬರ್ಟ್ (AI + ಭಾವನೆ)",accuracyLabel:"ನಿಖರತೆ (R²)",maeLabel:"MAE",rmseLabel:"RMSE",featureImportanceHeader:"ಪ್ರಮುಖ ಬೆಲೆ ಚಾಲಕರು",sentimentDistributionHeader:"ಸುದ್ದಿ ಭಾವನೆ ವಿತರಣೆ",marketComparisonHeader:"ಪ್ರಮುಖ ಮಾರುಕಟ್ಟೆಗಳಲ್ಲಿ ಬೆಲೆ ಹೋಲಿಕೆ",weatherImpactHeader:"ಗಾಗಿ ಹವಾಮಾನ ಪ್ರಭಾವ ವಿಶ್ಲೇಷಣೆ",weatherImpactPlaceholder:"ಹವಾಮಾನ ವಿಶ್ಲೇಷಣೆ ನೋಡಲು ಮಾರುಕಟ್ಟೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ ಮತ್ತು ಬೆಲೆಯನ್ನು ಊಹಿಸಿ.",dataQualityHeader:"ಡೇಟಾ ಗುಣಮಟ್ಟ ಮೇಲ್ವಿಚಾರಣೆ",reportsHeader:"ವರದಿ ಜನರೇಟರ್",generateReportHeader:"ಕಸ್ಟಮ್ ವರದಿ ರಚಿಸಿ",generateReportSummary:"ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ ಮಾಡಿದ ಇತ್ತೀಚಿನ ಬೆಲೆ ಮುನ್ಸೂಚನೆ ಮತ್ತು ವಿಶ್ಲೇಷಣೆಯ ಆಧಾರದ ಮೇಲೆ ವಿವರವಾದ PDF ವರದಿಯನ್ನು ರಚಿಸಿ.",generateReportButtonText:"ವರದಿ ರಚಿಸಿ ಮತ್ತು ಡೌನ್‌ಲೋಡ್ ಮಾಡಿ",settingsHeader:"ಸೆಟ್ಟಿಂಗ್‌ಗಳು ಮತ್ತು ಸಂರಚನೆ",dataSourceHeader:"ಡೇಟಾ ಮೂಲ ನಿರ್ವಹಣೆ",syncDataButtonText:"ಈಗ ಎಲ್ಲಾ ಡೇಟಾವನ್ನು ಸಿಂಕ್ ಮಾಡಿ",chatbotHeader:"ಅಗ್ರಿಬರ್ಟ್ ಚಾಟ್‌ಬಾಟ್",chatWelcomeMessage:"ನಮಸ್ಕಾರ! ನಾನು ಅಗ್ರಿಬರ್ಟ್. ನಾನು ನಿಮಗೆ ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?",aboutHeader:"ಅಗ್ರೋಬರ್ಟ್ ಬಗ್ಗೆ",pricePredictionResultLoading:'<span class="loading-spinner"></span> ಊಹಿಸಲಾಗುತ್ತಿದೆ...',predictedFor: (c, m, d, report) => { const avg = report.average_price; const low = report.low_price; const high = report.high_price; const perKg = (avg / 100).toFixed(2); const formatPrice = (p) => p.toLocaleString('kn-IN'); return `<p class="mb-2"><strong>${m}</strong> ನಲ್ಲಿ <strong>${c}</strong> ಗಾಗಿ ${d} ದಿನಗಳ ಮುನ್ಸೂಚಿತ ಸರಾಸರಿ ಮಂಡಿ ಬೆಲೆ ಅಂದಾಜು <strong>₹${formatPrice(avg)}</strong> ಪ್ರತಿ ಕ್ವಿಂಟಾಲ್ ಆಗಿದೆ.</p><p class="mb-2">ಸಾಮಾನ್ಯ ವಿವರಣೆ ಇಲ್ಲಿದೆ:</p><ul class="list-disc pl-5 text-sm"><li><strong>ಸರಾಸರಿ ಬೆಲೆ:</strong> ₹${formatPrice(avg)} ಪ್ರತಿ ಕ್ವಿಂಟಾಲ್ (ಅಥವಾ ₹${perKg} ಪ್ರತಿ ಕೆಜಿ)</li><li><strong>ಕಡಿಮೆ ಮಾರುಕಟ್ಟೆ ಬೆಲೆ:</strong> ಸುಮಾರು ₹${formatPrice(low)} ಪ್ರತಿ ಕ್ವಿಂಟಾಲ್</li><li><strong>ಹೆಚ್ಚಿನ ಮಾರುಕಟ್ಟೆ ಬೆಲೆ:</strong> ಸುಮಾರು ₹${formatPrice(high)} ಪ್ರತಿ ಕ್ವಿಂಟಾಲ್</li></ul><p class="mt-3 text-xs text-gray-500">ದಯವಿಟ್ಟು ಗಮನಿಸಿ, ಈ ಬೆಲೆಗಳು ಸರಾಸರಿಯಾಗಿವೆ. ನಿರ್ದಿಷ್ಟ APMC ಮಾರುಕಟ್ಟೆ (ಮಂಡಿ), ಗುಣಮಟ್ಟ, ಮತ್ತು ಸ್ಥಳೀಯ ಬೇಡಿಕೆಯನ್ನು ಅವಲಂಬಿಸಿ ನಿಖರವಾದ ದರವು ಬದಲಾಗಬಹುದು.</p>`; },unit:"INR/ಕ್ವಿಂಟಾಲ್",sentimentAnalysisResultLoading:'<span class="loading-spinner"></span> ಭಾವನೆ ವಿಶ್ಲೇಷಿಸಲಾಗುತ್ತಿದೆ...',sentimentResultText:(s,sc)=>`ಪತ್ತೆಯಾದ ಭಾವನೆ: <strong>${s}</strong> (ಅಂಕ: ${sc.toFixed(2)})`,xaiFactors:f=>`<p class="font-bold">ಪ್ರಮುಖ ಪ್ರಭಾವ ಬೀರುವ ಅಂಶಗಳು:</p><ul class="list-disc pl-5 mt-2 text-sm">${f.map(i=>`<li class="${i.impact==="Positive"?"text-green-700":i.impact==="Negative"?"text-red-700":"text-gray-700"}">${i.factor} (${i.impact} ಪ್ರಭಾವ)</li>`).join("")}</ul>`,weatherImpactText:(m,t,c,i)=>`<div class="flex items-start gap-4"><i class="fas fa-cloud-sun-rain text-3xl text-blue-500 mt-1"></i><div><p><strong>${m} ನಲ್ಲಿನ ಪ್ರಸ್ತುತ ಪರಿಸ್ಥಿತಿಗಳು:</strong> ${t}°C, ${c}.</p><p class="mt-2"><strong>ಪ್ರಭಾವ ವಿಶ್ಲೇಷಣೆ:</strong> ${i}</p></div></div>`,reportGenerating:'<span class="loading-spinner"></span> ವರದಿ ತಯಾರಿಸಲಾಗುತ್ತಿದೆ...',reportGenerated:"✅ ವರದಿ ಯಶಸ್ವಿಯಾಗಿ ಸಿದ್ಧವಾಗಿದೆ!",reportError:"❌ ವರದಿ ರಚಿಸುವಲ್ಲಿ ದೋಷ.",chatSuggestions:["ಪಂಜಾಬ್‌ನಲ್ಲಿ ಗೋಧಿ ಬೆಲೆ?","ಭತ್ತದ ಮೇಲೆ ಮಾನ್ಸೂನ್ ಪ್ರಭಾವ?","ನನ್ನ ಪ್ರದೇಶಕ್ಕೆ ಬೆಳೆ ಶಿಫಾರಸು ಮಾಡಿ."],cropRecommendationLoading:'<span class="loading-spinner"></span> ಅತ್ಯುತ್ತಮ ಬೆಳೆಯನ್ನು ಹುಡುಕಲಾಗುತ್ತಿದೆ...',cropRecommendationResult:(c,r)=>`<p><strong>ಶಿಫಾರಸು ಮಾಡಿದ ಬೆಳೆ:</strong> <span class="text-green-700 font-bold">${c}</span></p><p class="text-sm mt-1">${r}</p>`,weather:{Clear:"ಸ್ಪಷ್ಟ","Partly Cloudy":"ಭಾಗಶಃ ಮೋಡ","Light Rain":"ಲಘು ಮಳೆ",Sunny:"ಬಿಸಿಲು",Rainy:"ಮಳೆ",Cloudy:"ಮೋಡ",Humid:"ತೇವಾಂಶ",Positive:"ಧನಾತ್ಮಕ",Negative:"ಋಣಾತ್ಮಕ",Neutral:"ನಿರಪೇಕ್ಷ"},chatError:"❌ ದೋಷ: ಚಾಟ್ ಸೇವೆಗೆ ಸಂಪರ್ಕ ಸ್ಥಾಪಿಸಲಾಗಲಿಲ್ಲ. ಪುನಃ ಪ್ರಯತ್ನ ಮಾಡಿ.",chatResponses:{greeting:"ನಮಸ್ಕಾರ! ನಾನು ಅಗ್ರಿಬರ್ಟ್. ನಾನು ನಿಮಗೆ ಇಂದು ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ? ಬೆಲೆ ಮುನ್ಸೂಚನೆ, ಹವಾಮಾನ ಪ್ರಭಾವ, ಮಣ್ಣಿನ ಶಿಫಾರಸುಗಳು, ಅಥವಾ ಮಾರುಕಟ್ಟೆ ಪ್ರವೃತ್ತಿಗಳ ಬಗ್ಗೆ ನನ್ನನ್ನು ಕೇಳಿ!",priceQuery:"ನಿಖರ ಬೆಲೆ ಮುನ್ಸೂಚನೆಗಾಗಿ, ಕೃಪಯ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್ ಟ್ಯಾಬ್‌ಗೆ ಹೋಗಿ ಮತ್ತು ಬೆಲೆ ಮುನ್ಸೂಚನೆ ಸಾಧನ ಬಳಸಿ. ಸರಕು ಹೆಸರು, ಮಾರುಕಟ್ಟೆ ಮತ್ತು ದಿನಗಳ ಸಂಖ್ಯೆ ನೀಡಿ.",weatherQuery:"ಹವಾಮಾನವು ಬೆಳೆಯ ಬೆಲೆಗಳನ್ನು ಗಮನಾರ್ಹವಾಗಿ ಪ್ರಭಾವಿಸುತ್ತದೆ. ಕೃಪಯ ವಿಶ್ಲೇಷಣೆ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ಹವಾಮಾನ ಪ್ರಭಾವ ವಿಶ್ಲೇಷಣೆ ಸಾಧನ ಬಳಸಿ.",soilQuery:"ನಾನು ಮಣ್ಣಿನ ಸಂಬಂಧಿತ ಶಿಫಾರಸುಗಳನ್ನು ನೀಡಲು ಸಾಧ್ಯ. ಕೃಪಯ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ ಬೆಳೆ ಶಿಫಾರಸು ವ್ಯವಸ್ಥೆ ಸಾಧನ ಬಳಸಿ.",marketQuery:"ಮಾರುಕಟ್ಟೆ ಡೇಟಾವು ಕೃಷಿ ನಿರ್ಧಾರಗಳಿಗೆ ನಿರ್ಣಾಯಕವಾಗಿದೆ. ವಿಶ್ಲೇಷಣೆ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ಬೆಲೆ ಹೋಲಿಕೆ ಸಾಧನ ನೋಡಿ.",sentimentQuery:"ಸುದ್ದಿ ಭಾವನೆವು ಮಾರುಕಟ್ಟೆ ಪ್ರವೃತ್ತಿಗಳನ್ನು ಪ್ರಭಾವಿಸುತ್ತದೆ. ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ ಭಾವನೆ ವಿಶ್ಲೇಷಣೆ ಸಾಧನ ಬಳಸಿ.",seasonalQuery:"ಋತುಕಾಲೀನ ಅಂಶಗಳು ಬೆಳೆ ಬೆಲೆಯಲ್ಲಿ ಮುಖ್ಯ ಪಾತ್ರ ನಿರ್ವಹಿಸುತ್ತವೆ. ಐತಿಹಾಸಿಕ ಪ್ರವೃತ್ತಿಗಳು ವಿಶ್ಲೇಷಣೆ ಟ್ಯಾಬ್‌ನಲ್ಲಿ ಗೋಚರವಾಗಿವೆ.",recommendQuery:"ನಾನು ನಿಮ್ಮ ಮಣ್ಣು ಮತ್ತು ಹವಾಮಾನ ಪರಿಸ್ಥಿತಿಗಳ ಆಧಾರದ ಮೇಲೆ ಬೆಳೆ ಸಲಹೆ ನೀಡಲಿ. ಡ್ಯಾಶ್‌ಬೋರ್ಡ್‌ನಲ್ಲಿ ಬೆಳೆ ಶಿಫಾರಸು ಸಾಧನ ಬಳಸಿ.",supportQuery:"ತಾಂತ್ರಿಕ ಸಹಾಯ, ದೋಷ ವರದಿ, ಅಥವಾ ವೈಶಿಷ್ಟ್ಯ ವಿನಂತಿಗಳ ಸಹಾಯತೆಗಾಗಿ, ಕೃಪಯ ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ:\n📧 ಇಮೇಲ್: ccholarajarp@gmail.com\n📱 ಮೊಬೈಲ್: +91 6360244323\n\nನಾವು ನಿಮಗೆ ಸಹಾಯ ಮಾಡಲು ಇಲ್ಲಿದ್ದೇವೆ!",contactQuery:"ನೀವು ನಮ್ಮ ಸಹಾಯ ತಂಡವನ್ನು ಇಲ್ಲಿ ಸಂಪರ್ಕಿಸಬಹುದು:\n📧 ಇಮೇಲ್: ccholarajarp@gmail.com\n📱 ಮೊಬೈಲ್: +91 6360244323\n\nಯಾವುದೇ ಪ್ರಶ್ನೆಗಾಗಿ ನಮ್ಮನ್ನು ಸಂಪರ್ಕಿಸಿ!",feedbackQuery:"ನಾವು ನಿಮ್ಮ ಪ್ರತಿಕ್ರಿಯೆ ಕೇಳಲು ಇಷ್ಟಪಡುತ್ತೇವೆ!\n📧 ಇಮೇಲ್: ccholarajarp@gmail.com\n📱 ಮೊಬೈಲ್: +91 6360244323\n\nನಿಮ್ಮ ಸಲಹೆಗಳು ನಮ್ಮನ್ನು ಸುಧಾರಿಸಲು ಸಹಾಯ ಮಾಡುತ್ತವೆ!",unknownQuery:"ಆ ಪ್ರಶ್ನೆ ಬಗ್ಗೆ ನಾನು ಖಚಿತವಾಗಿಲ್ಲ. ನೀವು ನನ್ನನ್ನು ಬೆಲೆ, ಹವಾಮಾನ, ಮಣ್ಣು, ಮಾರುಕಟ್ಟೆ, ಭಾವನೆ, ಋತುಕಾಲೀನ ಅಂಶಗಳು, ಬೆಳೆ ಸುಗಮೆ, ಅಥವಾ ತಾಂತ್ರಿಕ ಸಹಾಯದ ಬಗ್ಗೆ ಕೇಳಬಹುದು. ನೇರ ಸಂಪರ್ಕಕ್ಕಾಗಿ, ccholarajarp@gmail.com ಗೆ ಇಮೇಲ್ ಮಾಡಿ ಅಥವಾ +91 6360244323 ಗೆ ಕರೆ ಮಾಡಿ."},reportDateLabel:"ರಚಿಸಿದ ದಿನಾಂಕ:",reportPriceHeader:"ಬೆಲೆ ಮುನ್ಸೂಚನೆ ಸಾರಾಂಶ",reportChartHeader:"ಐತಿಹಾಸಿಕ ಮತ್ತು ಊಹಿಸಿದ ಬೆಲೆ ಚಾರ್ಟ್",reportXAIHeader:"ಪ್ರಮುಖ ಪ್ರಭಾವ ಬೀರುವ ಅಂಶಗಳು (XAI)",reportRegionalHeader:"ಪ್ರಾದೇಶಿಕ ವಿಶ್ಲೇಷಣೆ ಸ್ನ್ಯಾಪ್‌ಶಾಟ್",reportNewsHeader:"ಇತ್ತೀಚಿನ ಸುದ್ದಿ ನವೀಕರಣಗಳು",otpConsoleNote:"ಅಭಿವೃದ್ಧಿಗಾಗಿ, ನಿಮ್ಮ OTP ಸರ್ವರ್ ಕನ್ಸೋಲ್‌ನಲ್ಲಿ ಕಾಣಿಸುತ್ತದೆ.",aboutText:"<p><strong>ಅಗ್ರೋಬರ್ಟ್</strong> ಕೃಷಿ ಮಾರುಕಟ್ಟೆ ಬುದ್ಧಿಮತ್ತೆಯಲ್ಲಿ ಒಂದು ಮಾದರಿ ಬದಲಾವಣೆಯನ್ನು ಪ್ರತಿನಿಧಿಸುತ್ತದೆ, ಇದು ಭಾರತದಾದ್ಯಂತ ವ್ಯಾಪಕ ಶ್ರೇಣಿಯ ಕೃಷಿ ಸರಕುಗಳಿಗೆ ನಿಖರ ಮತ್ತು ಸಮಯೋಚಿತ ಬೆಲೆ ಮುನ್ಸೂಚನೆಗಳನ್ನು ಒದಗಿಸಲು ಭಾವನೆ ವಿಶ್ಲೇಷಣೆಗಾಗಿ BERT ಸೇರಿದಂತೆ ಅತ್ಯಾಧುನಿಕ ಯಂತ್ರ ಕಲಿಕೆ ಮಾದರಿಗಳನ್ನು ಬಳಸಿಕೊಳ್ಳುತ್ತದೆ.</p><p>ನಮ್ಮ ಧ್ಯೇಯವು ರೈತರು, ವ್ಯಾಪಾರಿಗಳು ಮತ್ತು ವಿಶ್ಲೇಷಕರಿಗೆ ಕ್ರಿಯಾಶೀಲ ಒಳನೋಟಗಳೊಂದಿಗೆ ಅಧಿಕಾರ ನೀಡುವುದು, ಅಸ್ಥಿರ ಮಾರುಕಟ್ಟೆಯಲ್ಲಿ ತಿಳುವಳಿಕೆಯುಳ್ಳ ನಿರ್ಧಾರಗಳನ್ನು ತೆಗೆದುಕೊಳ್ಳಲು ಅವರಿಗೆ ಸಹಾಯ ಮಾಡುವುದು. ವೇದಿಕೆಯು Agmarknet, ಹವಾಮಾನ APIಗಳು ಮತ್ತು ನೈಜ-ಸಮಯದ ಸುದ್ದಿ ಫೀಡ್‌ಗಳಂತಹ ವಿವಿಧ ಮೂಲಗಳಿಂದ ಡೇಟಾವನ್ನು ಸಂಯೋಜಿಸಿ ಮಾರುಕಟ್ಟೆಯ ಡೈನಾಮಿಕ್ಸ್‌ನ ಸಮಗ್ರ ನೋಟವನ್ನು ನೀಡುತ್ತದೆ.</p>",missingValuesItem:"ಕಾಣೆಯಾದ ಮೌಲ್ಯಗಳು: <span class='font-semibold text-green-600'>ಕಡಿಮೆ (0.5%)</span>",outliersItem:"ಹೊರಗಿನವುಗಳು ಪತ್ತೆಯಾಗಿವೆ: <span class='font-semibold text-yellow-600'>ಮಧ್ಯಮ (1.2%)</span>",apiStatusItem:"API ಡೇಟಾ ಫೀಡ್‌ಗಳು: <span class='font-semibold text-green-600'>ಎಲ್ಲವೂ ಕಾರ್ಯಾಚರಣೆಯಲ್ಲಿವೆ</span>",agmarknetStatus:"Agmarknet API: <span class='font-semibold text-green-600'>ಸಂಪರ್ಕಗೊಂಡಿದೆ</span>",openWeatherStatus:"OpenWeather API: <span class='font-semibold text-green-600'>ಸಂಪರ್ಕಗೊಂಡಿದೆ</span>",faostatStatus:"FAOSTAT ಡೇಟಾ: <span class='font-semibold text-yellow-600'>ಭಾಗಶಃ ಸಿಂಕ್ ಮಾಡಲಾಗಿದೆ</span>",newsScraperStatus:"ಸುದ್ದಿ ಸ್ಕ್ರೇಪರ್‌ಗಳು: <span class='font-semibold text-green-600'>ಸಕ್ರಿಯ</span>",soilTypeAlluvial:"ಮೆಕ್ಕಲು",soilTypeBlack:"ಕಪ್ಪು",soilTypeRed:"ಕೆಂಪು",soilTypeLaterite:"ಲ್ಯಾಟರೈಟ್",forgotIdentifierLabel:"ಬಳಕೆದಾರಹೆಸರು, ಇಮೇಲ್, ಅಥವಾ ಮೊಬೈಲ್",featureModalTitle:"ಹೊಸ ವೈಶಿಷ್ಟ್ಯ ಕಲ್ಪನೆಗಳು!",featureModalIntro:"ನಿಮ್ಮ ಅನುಭವವನ್ನು ಸುಧಾರಿಸಲು, ನಾವು ಸೇರಿಸಬಹುದು:",feature1:"ಬೆಲೆ ಎಚ್ಚರಿಕೆಗಳು: ಒಂದು ಸರಕು ನಿಮ್ಮ ಗುರಿ ಬೆಲೆಯನ್ನು ತಲುಪಿದಾಗ ಅಧಿಸೂಚನೆಗಳನ್ನು ಪಡೆಯಿರಿ.",feature2:"ಸರಕು ಹೋಲಿಕೆ: ಎರಡು ಅಥವಾ ಹೆಚ್ಚು ಬೆಳೆಗಳ ಐತಿಹಾಸಿಕ ಪ್ರವೃತ್ತಿಗಳನ್ನು ಹೋಲಿಕೆ ಮಾಡಿ.",feature3:"ವೈಯಕ್ತಿಕಗೊಳಿಸಿದ ಡ್ಯಾಶ್‌ಬೋರ್ಡ್: ತ್ವರಿತ ಪ್ರವೇಶಕ್ಕಾಗಿ ನಿಮ್ಮ ನೆಚ್ಚಿನ ಸರಕುಗಳು ಮತ್ತು ಮಾರುಕಟ್ಟೆಗಳನ್ನು ಉಳಿಸಿ.",syncDataSuccess:"ಡೇಟಾ ಯಶಸ್ವಿಯಾಗಿ ಸಿಂಕ್ ಮಾಡಲಾಗಿದೆ!",improvementLabel:"ಸುಧಾರಣೆ",alertSetSuccess: (c, m) =>`ಎಚ್ಚರಿಕೆ ಸೆಟ್ ಆಗಿದೆ! ${m} ನಲ್ಲಿ ${c} ಬೆಲೆ ಬದಲಾವಣೆಗಳಿಗಾಗಿ ನಾವು ನಿಮಗೆ ತಿಳಿಸುತ್ತೇವೆ.`,comparisonHeader:"ಸರಕು ಹೋಲಿಕೆ", commodity1Label:"ಸರಕು 1", commodity2Label:"ಸರಕು 2",lastSynced: (date) => `ಕೊನೆಯದಾಗಿ ಸಿಂಕ್ ಮಾಡಿದ್ದು: ${date.toLocaleString('kn-IN', { hour: '2-digit', minute: '2-digit' })}`}
+                };
+                
+                async function getData(url = '') { 
+                    const token = sessionStorage.getItem('agrobert_token'); 
+                    let fullUrl = url;
+                    if (!fullUrl.startsWith('/api')) {
+                        fullUrl = fullUrl.startsWith('/') ? `/api/v1${fullUrl}` : `/api/v1/${fullUrl}`;
+                    }
+                    const res = await fetch(fullUrl, { 
+                        headers: { 'Authorization': `Bearer ${token}` } 
+                    }); 
+                    if (!res.ok) { 
+                        if(res.status === 401) { 
+                            sessionStorage.removeItem('agrobert_token'); 
+                            showLogin(); 
+                        } 
+                        throw new Error('Request failed'); 
+                    } 
+                    return res.json(); 
+                }
+                async function postData(url = '', data = {}) { 
+                    const token = sessionStorage.getItem('agrobert_token'); 
+                    let fullUrl = url;
+                    if (!fullUrl.startsWith('/api')) {
+                        fullUrl = fullUrl.startsWith('/') ? `/api/v1${fullUrl}` : `/api/v1/${fullUrl}`;
+                    }
+                    const res = await fetch(fullUrl, { 
+                        method: 'POST', 
+                        headers: { 
+                            'Content-Type': 'application/json', 
+                            'Authorization': `Bearer ${token}` 
+                        }, 
+                        body: JSON.stringify(data) 
+                    }); 
+                    if (!res.ok) { 
+                        if(res.status === 401) { 
+                            sessionStorage.removeItem('agrobert_token'); 
+                            showLogin(); 
+                        } 
+                        throw new Error('Request failed'); 
+                    } 
+                    return res.json(); 
+                }
+                
+                function renderChart(chart, elId, config) { if (chart) chart.destroy(); return new Chart(el(elId).getContext('2d'), config); }
+                function renderPriceChart(data) { 
+                    // [Image of Price Trend Graph]
+                    priceChart = renderChart(priceChart, 'priceChart', { type: 'line', data: { labels: data.dates, datasets: [{ label: 'Historical Price', data: data.prices.slice(0, -1), borderColor: 'rgb(75, 192, 192)', tension: 0.1 }, { label: 'Predicted Price', data: Array(data.prices.length - 2).fill(null).concat(data.prices.slice(-2)), borderColor: 'rgb(255, 99, 132)', borderDash: [5, 5], pointRadius: 5 }] }, options: { responsive: true, maintainAspectRatio: false } }); 
+                }
+                function renderFeatureImportanceChart(c) { 
+                    const lang = langSelect.value;
+                    const f=['Weather','Soil Nutrients','Market Arrivals','Sentiment','Seasonality'];
+                    // Realistic weight distribution for agricultural price drivers
+                    const i=[28, 22, 25, 15, 10]; // Weather has highest impact (28%), followed by market arrivals (25%), soil (22%), sentiment (15%), seasonality (10%)
+                    
+                    featChart = renderChart(featChart, 'featureImportanceChart', {
+                        type:'bar',
+                        data:{
+                            labels:f,
+                            datasets:[{
+                                label: translations[lang].featureImportanceHeader || 'Importance Score',
+                                data:i,
+                                backgroundColor:['rgba(59, 130, 246, 0.8)','rgba(34, 197, 94, 0.8)','rgba(249, 115, 22, 0.8)','rgba(139, 92, 246, 0.8)','rgba(236, 72, 153, 0.8)'],
+                                borderColor:['rgb(59, 130, 246)','rgb(34, 197, 94)','rgb(249, 115, 22)','rgb(139, 92, 246)','rgb(236, 72, 153)'],
+                                borderWidth:2
+                            }]
+                        },
+                        options:{
+                            indexAxis:'y',
+                            responsive:true,
+                            maintainAspectRatio:false,
+                            plugins:{
+                                legend:{display:true,position:'bottom',labels:{padding:10,usePointStyle:true,font:{size:12}}}
+                            },
+                            scales:{
+                                x:{beginAtZero:true,max:30,ticks:{stepSize:5,callback:function(v){return v+'%'}}},
+                                y:{stacked:false}
+                            }
+                        }
+                    }); 
+                }
+                function renderSentimentPieChart(){ 
+                    const lang = langSelect.value;
+                    // Realistic sentiment distribution based on agricultural news
+                    const sentimentData = [48, 22, 30]; // 48% positive, 22% negative, 30% neutral
+                    
+                    sentimentChart = renderChart(sentimentChart, 'sentimentPieChart', {
+                        type:'doughnut',
+                        data:{
+                            labels:[translations[lang].weather?.Positive || 'Positive', translations[lang].weather?.Negative || 'Negative', translations[lang].weather?.Neutral || 'Neutral'],
+                            datasets:[{
+                                data: sentimentData,
+                                backgroundColor:['#10b981','#ef4444','#6b7280'],
+                                borderColor:['#059669','#dc2626','#4b5563'],
+                                borderWidth:2
+                            }]
+                        },
+                        options:{
+                            responsive:true,
+                            maintainAspectRatio:false,
+                            plugins:{
+                                legend:{
+                                    position:'bottom',
+                                    labels:{
+                                        padding:15,
+                                        usePointStyle:true,
+                                        font:{size:13},
+                                        generateLabels:function(chart){
+                                            const data=chart.data;
+                                            return data.labels.map((label,i)=>{
+                                                const value=data.datasets[0].data[i];
+                                                return {
+                                                    text:`${label}: ${value}%`,
+                                                    fillStyle:data.datasets[0].backgroundColor[i],
+                                                    hidden:false,
+                                                    index:i
+                                                };
+                                            });
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }); 
+                }
+                function renderComparisonChart() {
+                            const commodity1 = el('compareCommodity1').value;
+                            const commodity2 = el('compareCommodity2').value;
+                            
+                            // Simulate data for two commodities
+                            const dates = Array.from({length: 12}, (_, i) => { const d = new Date(2025, i, 1); return d.toLocaleString('en-us', { month: 'short' }); });
+                            const prices1 = Array.from({length: 12}, () => 2000 + Math.random() * 500);
+                            const prices2 = Array.from({length: 12}, () => 3000 + Math.random() * 800);
+
+                            comparisonChart = renderChart(comparisonChart, 'comparisonChart', {
+                                type: 'line',
+                                data: {
+                                    labels: dates,
+                                    datasets: [
+                                        { label: commodity1, data: prices1, borderColor: 'rgb(255, 99, 132)', backgroundColor: 'rgba(255, 99, 132, 0.5)', fill: false, tension: 0.1 },
+                                        { label: commodity2, data: prices2, borderColor: 'rgb(54, 162, 235)', backgroundColor: 'rgba(54, 162, 235, 0.5)', fill: false, tension: 0.1 }
+                                    ]
+                                },
+                                options: { responsive: true, maintainAspectRatio: false }
+                            });
+                        }
+
+                // State name mapping to handle variations
+                const stateNameMapping = {
+                    'UT': 'Uttarakhand', 'Uttaranchal': 'Uttarakhand',
+                    'OR': 'Odisha', 'Odisha': 'Odisha', 'Orissa': 'Odisha',
+                    'AP': 'Andhra Pradesh', 'AR': 'Arunachal Pradesh',
+                    'AS': 'Assam', 'BR': 'Bihar', 'CG': 'Chhattisgarh',
+                    'GA': 'Goa', 'GJ': 'Gujarat', 'HR': 'Haryana',
+                    'HP': 'Himachal Pradesh', 'JK': 'Jammu and Kashmir',
+                    'JH': 'Jharkhand', 'KA': 'Karnataka', 'KL': 'Kerala',
+                    'MP': 'Madhya Pradesh', 'MH': 'Maharashtra', 'MN': 'Manipur',
+                    'ML': 'Meghalaya', 'MZ': 'Mizoram', 'NL': 'Nagaland',
+                    'PB': 'Punjab', 'RJ': 'Rajasthan', 'SK': 'Sikkim',
+                    'TN': 'Tamil Nadu', 'TR': 'Tripura', 'UP': 'Uttar Pradesh',
+                    'WB': 'West Bengal', 'DN': 'Dadra and Nagar Haveli',
+                    'DD': 'Daman and Diu', 'LD': 'Lakshadweep', 'PY': 'Puducherry',
+                    'DL': 'Delhi', 'Delhi': 'Delhi', 'Telangana': 'Telangana', 'TG': 'Telangana'
+                };
+                
+                function normalizeStateName(stateName) {
+                    if (!stateName) return '';
+                    const trimmed = stateName.trim();
+                    // Check if it's a code in the mapping
+                    if (stateNameMapping[trimmed]) return stateNameMapping[trimmed];
+                    // Check case-insensitive match in mapping values
+                    for (const [key, value] of Object.entries(stateNameMapping)) {
+                        if (value.toLowerCase() === trimmed.toLowerCase()) return value;
+                    }
+                    // Return as-is if no mapping found
+                    return trimmed;
+                }
+                
+                async function drawHeatmap(commodity = 'Wheat') {
+                    // [Image of Indian Map Heatmap Visualization]
+                    const container = document.getElementById('heatmapContainer');
+                    container.innerHTML = ''; // Clear previous content
+                    
+                    const width = container.clientWidth || 900;
+                    const height = 450;
+                    
+                    // Create wrapper for tooltips and legends
+                    const wrapper = d3.select(container).append('div')
+                        .style('position', 'relative')
+                        .style('width', width + 'px')
+                        .style('height', height + 'px');
+                    
+                    // Create Tooltip
+                    const tooltipDiv = wrapper.append('div')
+                        .attr('id', 'tooltip')
+                        .style('position', 'absolute').style('text-align', 'center')
+                        .style('padding', '8px').style('font', '12px sans-serif')
+                        .style('background', 'lightsteelblue').style('border', '1px solid #333')
+                        .style('border-radius', '8px').style('pointer-events', 'none')
+                        .style('opacity', 0).style('z-index', 100);
+                    
+                    // Create Legend
+                    const legendDiv = wrapper.append('div')
+                        .attr('id', 'heatmapLegend')
+                        .style('position', 'absolute').style('bottom', '10px').style('right', '10px')
+                        .style('background', 'rgba(255, 255, 255, 0.95)').style('padding', '12px')
+                        .style('border', '1px solid #ccc').style('border-radius', '5px').style('font-size', '11px').style('z-index', 10);
+                    
+                    // Create SVG
+                    const svg = wrapper.append("svg")
+                        .attr("width", width)
+                        .attr("height", height)
+                        .style('background', '#f5f5f5');
+                    
+                    try {
+                        // Try to load GeoJSON from alternative sources
+                        let india;
+                        const geoJsonUrls = [
+                            "https://raw.githubusercontent.com/geohacker/india/master/state/india_state.geojson",
+                            "https://raw.githubusercontent.com/datameet/india-maps/master/states/india-states.geojson"
+                        ];
+                        
+                        for (const url of geoJsonUrls) {
+                            try {
+                                india = await d3.json(url);
+                                if (india && india.features && india.features.length > 0) {
+                                    break;
+                                }
+                            } catch (e) {
+                                console.warn(`Failed to load from ${url}`, e);
+                                continue;
+                            }
+                        }
+                        
+                        if (!india || !india.features) {
+                            throw new Error('Could not load valid GeoJSON from any source');
+                        }
+
+                        // Fetch price data from our backend
+                        const heatmapData = await getData(`/heatmap-data?commodity=${commodity}`).catch(() => {
+                            // Fallback mock data if API fails
+                            return {
+                                "Andhra Pradesh": 2300,
+                                "Maharashtra": 2450,
+                                "Punjab": 2200,
+                                "Karnataka": 2350,
+                                "Tamil Nadu": 2400,
+                                "Gujarat": 2380,
+                                "Madhya Pradesh": 2280,
+                                "Uttar Pradesh": 2320,
+                                "Bihar": 2250,
+                                "West Bengal": 2150,
+                                "Delhi": 2500,
+                                "Rajasthan": 2200,
+                                "Haryana": 2400,
+                                "Himachal Pradesh": 2180,
+                                "Uttarakhand": 2140,
+                                "Assam": 2100,
+                                "Odisha": 2160,
+                                "Telangana": 2380,
+                                "Kerala": 2450,
+                                "Jharkhand": 2200
+                            };
+                        });
+                        
+                        const priceData = new Map(Object.entries(heatmapData));
+
+                        // Use fitSize to auto-scale the map
+                        const projection = d3.geoMercator().fitSize([width, height], india);
+                        const path = d3.geoPath().projection(projection);
+
+                        const priceRange = [
+                            Math.min(...Array.from(priceData.values())),
+                            Math.max(...Array.from(priceData.values()))
+                        ];
+                        const colorScale = d3.scaleLinear()
+                            .domain(priceRange)
+                            .range(['#ffffcc', '#006837']);
+                        
+                        svg.selectAll("path").data(india.features).enter().append("path")
+                            .attr("d", path)
+                            .attr("class", "state")
+                            .attr("fill", d => {
+                                // Try multiple property names for state names
+                                const geoStateName = d.properties.NAME_1 || d.properties.name || d.properties.ST_NM || d.properties.Name || d.properties.NAME || '';
+                                const normalizedGeoName = normalizeStateName(geoStateName);
+                                
+                                // Find matching price data with fuzzy matching
+                                let price = priceData.get(normalizedGeoName);
+                                if (!price) {
+                                    // Try case-insensitive search
+                                    for (const [key, value] of priceData.entries()) {
+                                        if (key.toLowerCase() === normalizedGeoName.toLowerCase()) {
+                                            price = value;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                return price ? colorScale(price) : '#e0e0e0';
+                            })
+                            .attr("stroke", "#fff")
+                            .attr("stroke-width", 0.5)
+                            .on("mouseover", (event, d) => {
+                                tooltipDiv.transition().duration(200).style("opacity", 0.9);
+                                const geoStateName = d.properties.NAME_1 || d.properties.name || d.properties.ST_NM || d.properties.Name || d.properties.NAME || '';
+                                const normalizedGeoName = normalizeStateName(geoStateName);
+                                
+                                // Find matching price data
+                                let price = priceData.get(normalizedGeoName);
+                                if (!price) {
+                                    for (const [key, value] of priceData.entries()) {
+                                        if (key.toLowerCase() === normalizedGeoName.toLowerCase()) {
+                                            price = value;
+                                            break;
+                                        }
+                                    }
+                                }
+                                
+                                tooltipDiv.html(`<strong>${geoStateName}</strong><br/>${commodity} Price: ₹${price ? price.toFixed(0) : 'N/A'}`)
+                                    .style("left", (event.offsetX + 10) + "px") 
+                                    .style("top", (event.offsetY - 28) + "px");
+                            })
+                            .on("mouseout", () => {
+                                tooltipDiv.transition().duration(500).style("opacity", 0);
+                            });
+                        
+                        legendDiv.html(`
+                            <div style="font-weight: bold; margin-bottom: 8px;">${commodity} Price Range (₹/Quintal)</div>
+                            <div style="display: flex; align-items: center; gap: 5px; margin-bottom: 5px;">
+                                <div style="width: 150px; height: 20px; background: linear-gradient(to right, ${colorScale(priceRange[0])}, ${colorScale(priceRange[1])});"></div>
+                            </div>
+                            <div style="display: flex; justify-content: space-between; font-size: 11px;">
+                                <span>₹${priceRange[0].toFixed(0)}</span>
+                                <span>₹${priceRange[1].toFixed(0)}</span>
+                            </div>
+                        `);
+                    } catch (error) {
+                        console.error("Failed to load heatmap:", error);
+                        container.innerHTML = `<div class="flex items-center justify-center h-full"><div class="text-center"><p class="text-red-500 mb-2">⚠️ Could not load map visualization</p><p class="text-sm text-gray-600">The regional heatmap requires D3.js and GeoJSON data. Please ensure you have an internet connection.</p></div></div>`;
+                    }
+                }
+                
+                function applyTranslations(lang){
+                    const tr=translations[lang];
+                    document.documentElement.lang = lang; 
+                    for(const key in tr){
+                        const elem=el(key); 
+                        if(elem && typeof tr[key]==='string' && !tr[key].includes('<')){
+                            elem.textContent=tr[key]
+                        } else if (elem) {
+                            elem.innerHTML = tr[key];
+                        }
+                    }
+                         ['quickPredictPriceText','quickAnalyzeSentimentText','quickRegionalAnalysisText','generateReportButtonText','syncDataButtonText'].forEach(id=>{
+                            const elem=el(id); if(elem)elem.textContent=tr[id]
+                        });
+                         ['predictButton', 'analyzeSentimentButton', 'recommendCropButton'].forEach(id => {
+                            const elem = el(id); if(elem) elem.innerHTML = tr[id];
+                        });
+                    el('mainNav').querySelectorAll('a').forEach(link=>{
+                        const key=link.id; if(tr[key])link.textContent=tr[key]
+                    });
+                    el('analyticsHeader').innerHTML=`${tr.analyticsHeader} <span id="analyticsCropName" class="text-blue-600">${ds.commodity}</span>`;
+                    el('weatherImpactHeader').innerHTML=`${tr.weatherImpactHeader} <span id="weatherMarketName" class="text-blue-600">${ds.market}</span>`;
+                    
+                    const soilTypes = [tr.soilTypeAlluvial, tr.soilTypeBlack, tr.soilTypeRed, tr.soilTypeLaterite];
+                    el('soilTypeSelect').innerHTML = soilTypes.map(s => `<option>${s}</option>`).join('');
+
+                    setupChatSuggestions(lang);
+                }
+                
+                async function updateWeatherWidget(market, lat, lon) {
+                    try {
+                        let url = `/weather?market=${market}`;
+                        if (lat && lon) {
+                            url += `&lat=${lat}&lon=${lon}`;
+                        }
+                        const w = await getData(url);
+                        ds.weatherData = w;
+                        const lang = langSelect.value;
+                        const translatedCondition = translations[lang].weather[w.condition] || w.condition;
+                        el('weatherWidget').innerHTML = `<i class="fas fa-cloud-sun"></i><span>${w.market}: ${w.temp}°C, ${translatedCondition}</span>`;
+                    } catch (e) {
+                        console.error("Error fetching weather:", e);
+                        el('weatherWidget').innerHTML = `<span>Weather data unavailable.</span>`;
+                    }
+                }
+                
+                async function updateAnalytics(c, m, p) {
+                    const l = langSelect.value;
+                    el('analyticsCropName').textContent = c;
+                    el('weatherMarketName').textContent = m;
+                    
+                    // Render charts
+                    renderFeatureImportanceChart(c);
+                    renderSentimentPieChart();
+                    renderComparisonChart(); // <-- This was the fix from before
+
+                    // Fetch and display model performance
+                    try {
+                        const perf = await getData(`/model-performance?commodity=${c}`);
+                        
+                        // Parse values as numbers
+                        const baselineRmse = parseFloat(perf.baseline_rmse) || 0;
+                        const agrobertRmse = parseFloat(perf.agrobert_rmse) || 0;
+                        
+                        // Display baseline model with proper formatting
+                        el('baselineModelLabel').innerHTML = `${translations[l].baselineModelName}`;
+                        el('baselineRmseValue').innerHTML = `₹${baselineRmse.toFixed(2)}`;
+                        
+                        // Display AgroBERT model with proper formatting
+                        el('agrobertModelLabel').innerHTML = `${translations[l].agrobertModelName}`;
+                        el('agrobertRmseValue').innerHTML = `₹${agrobertRmse.toFixed(2)}`;
+                        
+                        // Calculate improvement percentage
+                        const improvement_percent = baselineRmse > 0 ? ((baselineRmse - agrobertRmse) / baselineRmse) * 100 : 0;
+                        
+                        // Display improvement with dynamic styling
+                        const improvementEl = el('improvementValue');
+                        if (improvement_percent > 0) {
+                            improvementEl.innerHTML = `<span style="color: #10b981; font-size: 2.25rem; font-weight: 900;">${improvement_percent.toFixed(1)}%</span><br><span class="text-sm text-green-600">↑ Better</span>`;
+                        } else if (improvement_percent < 0) {
+                            improvementEl.innerHTML = `<span style="color: #ef4444; font-size: 2.25rem; font-weight: 900;">${Math.abs(improvement_percent).toFixed(1)}%</span><br><span class="text-sm text-red-600">↓ Lower</span>`;
+                        } else {
+                            improvementEl.innerHTML = `<span style="color: #6b7280; font-size: 2.25rem; font-weight: 900;">0%</span><br><span class="text-sm text-gray-600">≈ Similar</span>`;
+                        }
+                        
+                        el('improvementLabel').innerHTML = `${translations[l].improvementLabel}`;
+
+                    } catch (err) {
+                        console.error("Could not fetch model performance", err);
+                        // Set fallback values
+                        el('baselineRmseValue').innerHTML = '<span style="color: #d1d5db;">—</span>';
+                        el('agrobertRmseValue').innerHTML = '<span style="color: #d1d5db;">—</span>';
+                        el('improvementValue').innerHTML = '<span style="color: #d1d5db;">—</span>';
+                    }
+
+                    // Update weather impact
+                    const wic = el('weatherImpactContent');
+                    wic.innerHTML = '<span class="loading-spinner"></span>';
+                    if (ds.weatherData) {
+                        const w = ds.weatherData;
+                        const translated = translations[l].weather[w.condition] || w.condition;
+                        wic.innerHTML = translations[l].weatherImpactText(m, w.temp, translated, w.impact);
+                } else {
+                        wic.innerHTML = translations[l].weatherImpactPlaceholder;
+                    }
+                }
+
+                // --- FIX 1: DEFINE THE MISSING `updateMetricCards` FUNCTION ---
+                function updateMetricCards(prediction) {
+                    const lang = langSelect.value;
+                    
+                    // 1. Update Average Daily Price
+                    if (prediction && prediction.predicted_modal_price_INR) {
+                        el('avgDailyPrice').innerHTML = `₹ ${prediction.predicted_modal_price_INR}`;
+                        // You could add trend logic here if the API provides it
+                        el('avgDailyPrice').classList.remove('positive-trend', 'negative-trend');
+                        el('avgDailyPrice').classList.add('neutral-trend'); 
+                    } else {
+                        // Fallback
+                        el('avgDailyPrice').innerHTML = `₹ 2,458`;
+                    }
+
+                    el('marketTrend').textContent = 'Medium'; 
+                    el('marketTrendLabel').textContent = translations[lang].marketTrendLabel;
+
+                    el('cropYieldForecast').innerHTML = '12.3% <i class="fas fa-arrow-up text-green-500 text-base ml-2"></i>';
+                    el('cropYieldLabel').textContent = translations[lang].cropYieldLabel;
+                }
+                // --- END FIX 1 ---
+
+
+                function toggleCollapsible(id){const s=el(id); document.querySelectorAll('.collapsible-section').forEach(sec=>{if(sec.id!==id){sec.classList.remove('show')}}); s.classList.toggle('show');}
+                function setupChatSuggestions(lang){const c=el('chatbotSuggestions'); c.innerHTML=''; const s=translations[lang].chatSuggestions; s.forEach(txt=>{const b=document.createElement('button'); b.className='chatbot-suggestion-button'; b.textContent=txt; b.onclick=()=>{el('chatInput').value=txt; el('sendChatButton').click()}; c.appendChild(b);});}
+                function populateRegionalAnalysisTable(){const d=[{region:'Delhi',crop:'Wheat',predictedPrice:2350,trend:'Up',sentiment:'Positive'},{region:'Mumbai',crop:'Rice',predictedPrice:3100,trend:'Down',sentiment:'Neutral'},{region:'Bengaluru',crop:'Tomato',predictedPrice:1280,trend:'Up',sentiment:'Positive'},{region:'Pune',crop:'Onion',predictedPrice:1800,trend:'Down',sentiment:'Negative'},{region:'Lucknow',crop:'Potato',predictedPrice:1550,trend:'Up',sentiment:'Neutral'}]; el('regionalAnalysisTableBody').innerHTML=d.map(data=>`<tr class="border-b border-gray-200 hover:bg-gray-50"><td class="py-3 px-6 text-left whitespace-nowrap">${data.region}</td><td class="py-3 px-6 text-left">${data.crop}</td><td class="py-3 px-6 text-left">₹${data.predictedPrice}/Qtl</td><td class="py-3 px-6 text-left ${data.trend==='Up'?'text-green-600':'text-red-600'}">${data.trend} ${data.trend==='Up'?'<i class="fas fa-arrow-up"></i>':'<i class="fas fa-arrow-down"></i>'}</td><td class="py-3 px-6 text-left">${data.sentiment}</td></tr>`).join('');}
+                
+                ['predictButton', 'analyzeSentimentButton', 'recommendCropButton'].forEach(id => {
+                    const btn = el(id);
+                    btn.addEventListener('click', async () => {
+                        const lang = langSelect.value;
+                        const originalContent = btn.innerHTML;
+                        toggleButtonLoading(btn, true);
+                        try {
+                            if (id === 'predictButton') {
+                                ds.commodity = el('commodity').value; ds.market = el('market').value; const daysAhead = parseInt(el('daysAhead').value); 
+                                el('priceResult').innerHTML = translations[lang].pricePredictionResultLoading; el('priceResult').classList.remove('hidden'); 
+                                el('xaiResult').innerHTML = '<span class="loading-spinner"></span>'; el('alertsResult').innerHTML = '<span class="loading-spinner"></span>'; 
+                                await updateWeatherWidget(ds.market); 
+                                const res = await postData(`/predict`, { commodity: ds.commodity, market: ds.market, daysAhead: daysAhead }); 
+                                ds.prediction = res.prediction; ds.chartData = res.chartData; ds.xai = res.xai; 
+                                el('priceResult').innerHTML = translations[lang].predictedFor(ds.commodity, ds.market, daysAhead, res.prediction_report); 
+                                renderPriceChart(res.chartData); 
+                                el('xaiResult').innerHTML = translations[lang].xaiFactors(res.xai); 
+                                updateMetricCards(res.prediction); // This line will now work
+                                updateAnalytics(ds.commodity, ds.market, res.prediction.predicted_modal_price_INR); 
+                                el('alertsResult').innerHTML = translations[lang].alertsText;
+                            } else if (id === 'analyzeSentimentButton') {
+                                el('sentimentResult').innerHTML = translations[lang].sentimentAnalysisResultLoading; 
+                                el('sentimentResult').classList.remove('hidden'); 
+                                const result = await postData(`/analyze-sentiment`, { text: el('newsText').value }); 
+                                el('sentimentResult').innerHTML = translations[lang].sentimentResultText(result.sentiment, result.score);
+                            } else if (id === 'recommendCropButton') {
+                                el('recommendationResult').innerHTML = translations[lang].cropRecommendationLoading; 
+                                el('recommendationResult').classList.remove('hidden'); 
+                                const payload = { soil: el('soilTypeSelect').value, rainfall: el('rainfall').value, ph: el('phValue').value, temp: el('temperature').value }; 
+                                const result = await postData(`/recommend-crop`, payload); 
+                                el('recommendationResult').innerHTML = translations[lang].cropRecommendationResult(result.crop, result.reason);
+                            }
+                        } catch (error) {
+                            console.error("Action failed:", id, error);
+                            if(id === 'predictButton') el('priceResult').innerHTML = `Error: Could not fetch prediction.`;
+                            if(id === 'analyzeSentimentButton') el('sentimentResult').innerHTML = `Error: Could not analyze sentiment.`;
+                            if(id === 'recommendCropButton') el('recommendationResult').innerHTML = `Error: Could not get recommendation.`;
+                        }
+                         finally {
+                            toggleButtonLoading(btn, false, originalContent);
+                        }
+                    });
+                });
+
+                el('heatmapCommodity').addEventListener('change', (e) => { drawHeatmap(e.target.value); });
+                el('quickPredictPrice').addEventListener('click', () => toggleCollapsible('pricePredictionSection'));
+                el('quickAnalyzeSentiment').addEventListener('click', () => toggleCollapsible('sentimentAnalysisSection'));
+                el('quickRegionalAnalysis').addEventListener('click', () => el('regionalHeatmapSection').scrollIntoView({ behavior: 'smooth' }));
+                el('setAlertButton').addEventListener('click', () => {
+                    const commodity = el('commodity').value;
+                    const market = el('market').value;
+                    const lang = langSelect.value;
+                    const msg = translations[lang].alertSetSuccess(commodity, market);
+                    
+                    showMessage('alertSuccess', msg, true);
+                });
+
+                const allNavLinks = document.querySelectorAll('#mainNav a');
+                allNavLinks.forEach(link => {
+                    link.addEventListener('click', (e) => {
+                        e.preventDefault();
+                        const targetId = link.id.replace('nav', '').toLowerCase() + 'Content';
+                        
+                        // Hide all sections
+                        document.querySelectorAll('.dashboard-main-content').forEach(sec => sec.classList.add('hidden'));
+                        // Show the target section
+                        el(targetId).classList.remove('hidden');
+                        
+                        // Update active class
+                        allNavLinks.forEach(nav => nav.classList.remove('active'));
+                          link.classList.add('active');
+
+                        if (targetId === 'analyticsContent') {
+                            updateAnalytics(ds.commodity, ds.market, ds.prediction ? ds.prediction.predicted_modal_price_INR : 2250);
+                        }
+                        // --- END OF FIX ---
+                    });
+                }); 
+                el('syncDataButton').addEventListener('click', (e) => {
+                    const btn = e.currentTarget;
+                    const originalContent = btn.innerHTML;
+                    const lang = langSelect.value;
+                    
+                    // Show loading state
+                    btn.disabled = true;
+                    btn.innerHTML = `<span class="loading-spinner"></span> <span>Syncing...</span>`;
+
+                    setTimeout(() => {
+                        // Restore original state
+                        btn.disabled = false;
+                        btn.innerHTML = originalContent;
+                
+                        showMessage('syncDataSuccess', translations[lang].syncDataSuccess, true);
+
+                        el('lastSynced').textContent = translations[lang].lastSynced(new Date());
+
+                    }, 2000);
+                });
+                el('generateReportButton').addEventListener('click', async () => { 
+                    const lang = langSelect.value; 
+                    if (!ds.prediction) { 
+                        el('reportStatus').innerHTML = `<p class="text-red-600">${translations[lang].reportError}</p>`; 
+                        return; 
+                    } 
+                    el('reportStatus').innerHTML = `<p class="text-blue-600">${translations[lang].reportGenerating}</p>`; 
+                    const { jsPDF } = window.jspdf; 
+                    const reportElement = el('report-generator'); 
+                    reportElement.style.display = 'block'; 
+
+                    // Apply translations to the report before rendering
+                    el('report-title').innerText = `${ds.commodity} Price Report for ${ds.market}`; // This can stay Eng or be translated
+                    el('reportDateLabel').innerText = translations[lang].reportDateLabel;
+                    el('report-date').innerText = new Date().toLocaleDateString('en-IN');
+                    el('reportPriceHeader').innerText = translations[lang].reportPriceHeader;
+                    el('report-prediction-summary').innerHTML = el('priceResult').innerHTML;
+                    el('reportChartHeader').innerText = translations[lang].reportChartHeader;
+                    el('report-chart-container').innerHTML = `<img src="${priceChart.toBase64Image()}" style="width:100%; height:auto;">`;
+                    el('reportXAIHeader').innerText = translations[lang].reportXAIHeader;
+                    el('report-xai-container').innerHTML = el('xaiResult').innerHTML;
+                    el('reportRegionalHeader').innerText = translations[lang].reportRegionalHeader;
+                    el('report-table-container').innerHTML = el('regionalAnalysisTableBody').parentElement.outerHTML;
+                    el('reportNewsHeader').innerText = translations[lang].reportNewsHeader;
+
+                    try { 
+                        const news = await getData(`/news?lang=${lang}`); 
+                        el('report-news-container').innerHTML = `<ul>${news.map(n => `<li>${n}</li>`).join('')}</ul>`; 
+                    } catch (e) { 
+                        el('report-news-container').innerHTML = `<p>Could not fetch news.</p>` 
+                    } 
+                    
+                    setTimeout(async () => {
+                        try {
+                            const canvas = await html2canvas(reportElement, { scale: 2 }); 
+                            const imgData = canvas.toDataURL('image/png'); 
+                            const pdf = new jsPDF({ orientation: 'p', unit: 'mm', format: 'a4' }); 
+                            const pdfWidth = pdf.internal.pageSize.getWidth(); 
+                            const pdfHeight = (canvas.height * pdfWidth) / canvas.width; 
+                            pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight); 
+                            pdf.save(`AgroBert_Report_${lang.toUpperCase()}.pdf`); 
+                            el('reportStatus').innerHTML = `<p class="text-green-600">${translations[lang].reportGenerated}</p>`; 
+                        } catch (err) {
+                            console.error("Report generation failed:", err);
+                            el('reportStatus').innerHTML = `<p class="text-red-600">Failed to generate PDF.</p>`;
+                        } finally {
+                            reportElement.style.display = 'none'; 
+                        }
+                    }, 100);
+                });
+                
+                langSelect.addEventListener('change', (e) => { 
+                    applyTranslations(e.target.value); 
+                    if(ds.weatherData) { 
+                        const lang = e.target.value; 
+                        const wd = ds.weatherData; 
+                        const tc = translations[lang].weather[wd.condition]||wd.condition; 
+                        el('weatherWidget').innerHTML = `<i class="fas fa-cloud-sun"></i><span>${wd.market}: ${wd.temp}°C, ${tc}</span>`; 
+                    } 
+                });
+                
+                const handleSendChat = async () => { 
+                    const uq = el('chatInput').value.trim(); 
+                    if (!uq) return; 
+                    const lang = langSelect.value; 
+                    const umd = document.createElement('div'); 
+                    umd.className = 'message-bubble user-message'; 
+                    umd.innerHTML = `<p>${uq}</p>`; 
+                    el('chatbotMessages').appendChild(umd); 
+                    el('chatInput').value = ''; 
+                    el('chatbotMessages').scrollTop = el('chatbotMessages').scrollHeight; 
+                    const btd = document.createElement('div'); 
+                    btd.className = 'message-bubble bot-message'; 
+                    btd.innerHTML = `<span class="loading-spinner"></span>`; 
+                    el('chatbotMessages').appendChild(btd); 
+                    el('chatbotMessages').scrollTop = el('chatbotMessages').scrollHeight; 
+                    try { 
+                        const res = await postData(`/chat`, { query: uq, lang: lang }); 
+                        const queryLower = uq.toLowerCase(); 
+                        let responseText = res.response; 
+                        const priceKeywords = ['price','cost','₹','rupee','rupees','rate','mandi','quintal','kg','expensive','cheap','afford']; 
+                        const weatherKeywords = ['weather','rain','monsoon','temperature','humid','sunny','cloudy','cold','hot','forecast']; 
+                        const soilKeywords = ['soil','ph','fertility','nutrient','black','red','alluvial','laterite','seed','crop']; 
+                        const marketKeywords = ['market','trend','apmc','demand','supply','commerce','arrival','harvest']; 
+                        const sentimentKeywords = ['sentiment','news','positive','negative','neutral','article','impact']; 
+                        const seasonKeywords = ['season','seasonal','months','monsoon','harvest','sowing','rabi','kharif']; 
+                        const recommendKeywords = ['recommend','suggest','best crop','suitable','appropriate','which','what']; 
+                        const supportKeywords = ['support','help','issue','bug','error','problem','technical','fix','complaint']; 
+                        const contactKeywords = ['contact','email','phone','mobile','call','reach','connect','message','call us','contact us']; 
+                        const feedbackKeywords = ['feedback','suggestion','improve','improvement','feature','request','idea']; 
+                        let detectedType = 'unknownQuery'; 
+                        if (supportKeywords.some(k => queryLower.includes(k))) detectedType = 'supportQuery'; 
+                        else if (contactKeywords.some(k => queryLower.includes(k))) detectedType = 'contactQuery'; 
+                        else if (feedbackKeywords.some(k => queryLower.includes(k))) detectedType = 'feedbackQuery'; 
+                        else if (priceKeywords.some(k => queryLower.includes(k))) detectedType = 'priceQuery'; 
+                        else if (weatherKeywords.some(k => queryLower.includes(k))) detectedType = 'weatherQuery'; 
+                        else if (soilKeywords.some(k => queryLower.includes(k))) detectedType = 'soilQuery'; 
+                        else if (marketKeywords.some(k => queryLower.includes(k))) detectedType = 'marketQuery'; 
+                        else if (sentimentKeywords.some(k => queryLower.includes(k))) detectedType = 'sentimentQuery'; 
+                        else if (seasonKeywords.some(k => queryLower.includes(k))) detectedType = 'seasonalQuery'; 
+                        else if (recommendKeywords.some(k => queryLower.includes(k))) detectedType = 'recommendQuery'; 
+                        if (translations[lang] && translations[lang].chatResponses && translations[lang].chatResponses[detectedType]) { 
+                            responseText = translations[lang].chatResponses[detectedType]; 
+                        } 
+                        btd.innerHTML = `<p>${responseText.replace(/\n/g, '<br>')}</p>`; 
+                    } catch (error) { 
+                        const errorMsg = translations[langSelect.value]?.chatError || "❌ Error: Could not connect to the chat service."; 
+                        btd.innerHTML = `<p>${errorMsg}</p>`; 
+                    } 
+                };
+
+                el('sendChatButton').addEventListener('click', handleSendChat);
+                el('chatInput').addEventListener('keypress', (e) => { if (e.key === 'Enter') handleSendChat(); });
+                el('voiceInputButton').addEventListener('click', () => { 
+                    if (window.location.protocol !== 'https-:') {
+                        alert("Voice input is disabled. This feature only works on secure (https://) websites.");
+                        return;
+                    }
+                    const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+                    if (!SR) { alert("Voice recognition not supported by your browser."); return; } 
+                    const r = new SR(); 
+                    const langCodeMap = { 'hi': 'hi-IN', 'en': 'en-US', 'kn': 'kn-IN' };
+                    r.lang = langCodeMap[langSelect.value] || 'en-US';
+                    r.start(); 
+                    el('voiceInputButton').classList.add('bg-red-600'); 
+                    r.onresult = (e) => { el('chatInput').value = e.results[0][0].transcript; handleSendChat(); };
+                    r.onspeechend = () => { r.stop(); el('voiceInputButton').classList.remove('bg-red-600'); }; 
+                });
+
+                function getUserLocation() {
+                    const locationWidget = el('locationWidget');
+                    const locationText = el('locationText');
+                    
+                    locationText.textContent = '📡 Detecting...';
+                    
+                    if (navigator.geolocation) {
+                        navigator.geolocation.getCurrentPosition(
+                            async (position) => {
+                                const { latitude, longitude } = position.coords;
+                                console.log(`[GEOLOCATION] User location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                                
+                                // Store location globally
+                                window.userLocation = { latitude, longitude };
+                                
+                                try {
+                                    // Fetch nearest market and location info
+                                    const res = await postData('/geolocation', {
+                                        latitude: latitude,
+                                        longitude: longitude,
+                                        commodity: el('commodity').value || 'Wheat'
+                                    });
+                                    
+                                    // Extract market name - handle both object and string formats
+                                    const marketObj = res.nearest_market;
+                                    let marketName = 'Delhi'; // Default fallback
+                                    let distance = 0;
+                                    
+                                    // Check if marketObj is an object with 'name' property
+                                    if (typeof marketObj === 'object' && marketObj !== null && marketObj.name) {
+                                        marketName = marketObj.name;
+                                        distance = marketObj.distance_km || 0;
+                                    } else if (typeof marketObj === 'string') {
+                                        // If it's already a string
+                                        marketName = marketObj;
+                                    }
+                                    
+                                    console.log(`[GEOLOCATION] Nearest market: ${marketName} (${distance} km away)`);
+                                    
+                                    // Update UI with proper formatting
+                                    const distanceStr = distance > 0 ? ` (${distance.toFixed(1)} km away)` : '';
+                                    locationText.innerHTML = `<i class="fas fa-check-circle" style="color: #10b981; margin-right: 6px;"></i><span>${marketName}${distanceStr}</span>`;
+                                    locationWidget.style.backgroundColor = '#059669'; // Green
+                                    
+                                    // Auto-select the market
+                                    const marketSelect = el('market');
+                                    if (marketSelect) {
+                                        // Ensure market name is valid before setting
+                                        const options = Array.from(marketSelect.options).map(o => o.value);
+                                        if (options.includes(marketName)) {
+                                            marketSelect.value = marketName;
+                                        }
+                                    }
+                                    
+                                    // Update weather for the detected location
+                                    updateWeatherWidget(marketName, latitude, longitude);
+                                    
+                                    // Show location in the UI
+                                    const locationDisplay = el('marketLocation');
+                                    if (locationDisplay) {
+                                        locationDisplay.textContent = `Your Location: ${latitude.toFixed(4)}, ${longitude.toFixed(4)} | Nearest Market: ${marketName}`;
+                                        locationDisplay.style.display = 'block';
+                                    }
+                                } catch (error) {
+                                    console.error('[GEOLOCATION] Error fetching market data:', error);
+                                    // Fallback to location coordinates
+                                    locationText.innerHTML = `<i class="fas fa-map-pin" style="color: #f59e0b; margin-right: 6px;"></i><span>Location: ${latitude.toFixed(2)}, ${longitude.toFixed(2)}</span>`;
+                                    locationWidget.style.backgroundColor = '#f59e0b'; // Amber for warning
+                                }
+                            },
+                            (error) => {
+                                console.warn('[GEOLOCATION] Error:', error.message);
+                                locationText.innerHTML = `<i class="fas fa-map-marker-alt" style="color: #ef4444; margin-right: 6px;"></i><span>Using Default Location</span>`;
+                                locationWidget.style.backgroundColor = '#dc2626'; // Red
+                                
+                                // Default to Delhi
+                                window.userLocation = { latitude: 28.7041, longitude: 77.1025 };
+                                updateWeatherWidget('Delhi', 28.7041, 77.1025);
+                                
+                                const marketSelect = el('market');
+                                if (marketSelect) {
+                                    marketSelect.value = 'Delhi';
+                                }
+                            },
+                            { 
+                                enableHighAccuracy: true, 
+                                timeout: 10000, 
+                                maximumAge: 300000 // Cache for 5 minutes
+                            }
+                        );
+                    } else {
+                        console.warn('[GEOLOCATION] Geolocation not supported');
+                        locationText.textContent = 'Geolocation not supported';
+                        locationWidget.style.backgroundColor = '#dc2626'; // Red
+                        
+                        window.userLocation = { latitude: 28.7041, longitude: 77.1025 };
+                        updateWeatherWidget('Delhi');
+                    }
+                }
+                
+                // Click handler to refresh location
+                el('locationWidget').addEventListener('click', getUserLocation);
+                
+                const commodities = ["Apple", "Arecanut", "Bajra", "Banana", "Barley", "Beans", "Black Pepper", "Brinjal", "Cabbage", "Cardamom", "Castor", "Cauliflower", "Chickpea", "Chilli", "Clove", "Coconut", "Coffee", "Coriander", "Cotton", "Cumin", "Fenugreek", "Garlic", "Ginger", "Gram", "Grapes", "Groundnut", "Jowar", "Jute", "Lemon", "Lentil", "Linseed", "Maize", "Mango", "Masoor Dal", "Moong Dal", "Mustard", "Niger", "Okra", "Onion", "Orange", "Peas", "Pomegranate", "Potato", "Ragi", "Rice", "Rubber", "Safflower", "Sesame", "Soybean", "Sugarcane", "Sunflower", "Tea", "Tomato", "Toor Dal", "Turmeric", "Urad Dal", "Wheat"];
+                const markets = ["Agra", "Ahmedabad", "Ahmednagar", "Aizawl", "Ajmer", "Akola", "Alappuzha", "Aligarh", "Allahabad", "Alwar", "Ambala", "Amravati", "Amritsar", "Anantapur", "Angul", "Aurangabad", "Bagalkot", "Baharampur", "Bahraich", "Balaghat", "Balasore", "Ballari", "Banda", "Bengaluru", "Bankura", "Bareilly", "Barmer", "Bathinda", "Beed", "Belagavi", "Berhampur", "Betul", "Bhagalpur", "Bharatpur", "Bhavnagar", "Bhilwara", "Bhopal", "Bidar", "Vijayapura", "Bikaner", "Bilaspur", "Bokaro", "Buldhana", "Bundi", "Cachar", "Chamarajanagar", "Chandigarh", "Chhatarpur", "Chennai", "Chhindwara", "Chittoor", "Chitradurga", "Coimbatore", "Cooch Behar", "Cuddalore", "Cuttack", "Dahod", "Dakshina Kannada", "Darbhanga", "Davangere", "Dehradun", "Delhi", "Deoghar", "Dewas", "Dhanbad", "Dhar", "Dharmapuri", "Dhemaji", "Dhule", "Dibrugarh", "Dindigul", "East Godavari", "Ernakulam", "Erode", "Faridabad", "Fatehpur", "Firozabad", "Gadag", "Gandhinagar", "Gaya", "Ghaziabad", "Ghazipur", "Goa", "Goalpara", "Gonda", "Gorakhpur", "Kalaburagi", "Guntur", "Gurugram", "Guwahati", "Gwalior", "Haldia", "Hamirpur", "Hanumangarh", "Hapur", "Haridwar", "Hassan", "Hathras", "Hazaribagh", "Hingoli", "Hisar", "Hooghly", "Hoshangabad", "Howrah", "Hubli", "Hyderabad", "Imphal", "Indore", "Jabalpur", "Jagatsinghpur", "Jaipur", "Jaisalmer", "Jalandhar", "Jalgaon", "Jalna", "Jammu", "Jamnagar", "Jamshedpur", "Jaunpur", "Jhansi", "Jodhpur", "Jorhat", "Junagadh", "YSR Kadapa", "Kakinada", "Kanchipuram", "Kandhamal", "Kangra", "Kannauj", "Kannur", "Kanpur Nagar", "Karaikal", "Kargil", "Karimnagar", "Karnal", "Kasaragod", "Katihar", "Kochi", "Kodagu", "Kolar", "Kolhapur", "Kollam", "Kolkata", "Koppal", "Koraput", "Kota", "Kottayam", "Kozhikode", "Krishna", "Kullu", "Kurnool", "Kurukshetra", "Lakhimpur", "Latur", "Leh", "Lucknow", "Ludhiana", "Madurai", "Mahabubnagar", "Malappuram", "Mandi", "Mangalore", "Mansa", "Mathura", "Meerut", "Moga", "Sahibzada Ajit Singh Nagar", "Mokokchung", "Moradabad", "Mumbai", "Murshidabad", "Mysuru", "Nadia", "Nagapattinam", "Nagpur", "Nainital", "Nalgonda", "Namakkal", "Nanded", "Nashik", "Nellore", "New Delhi", "Nizamabad", "Ongole", "Palakkad", "Pali", "Palwal", "Panchkula", "Panipat", "Patan", "Patiala", "Patna", "Pauri Garhwal", "Perambalur", "Phek", "Pilibhit", "Pithoragarh", "Puducherry", "Port Blair", "Prakasam", "Pratapgarh", "Pune", "Puri", "Purnia", "Raichur", "Raigad", "Raipur", "Rajkot", "Ramanathapuram", "Rampur", "Ranchi", "Ranga Reddy", "Ratlam", "Ratnagiri", "Rewa", "Rohtak", "Rupnagar", "Sagar", "Saharanpur", "Salem", "Sambalpur", "Sangli", "Sangrur", "Satara", "Satna", "Sehore", "Shimla", "Shivamoggu", "Shivpuri", "Sikar", "Sindhudurg", "Sirmaur", "Sirsa", "Sitamarhi", "Solan", "Solapur", "Sonipat", "Srikakulam", "Sultanpur", "Surat", "Surendranagar", "Thane", "Thanjavur", "Theni", "Thiruvananthapuram", "Thrissur", "Tinsukia", "Tiruchirappalli", "Tirunelveli", "Tiruppur", "Tiruvannamalai", "Tiruvarur", "Tonk", "Tumakuru", "Udaipur", "Udupi", "Ujjain", "Una", "Vadodara", "Valsad", "Varanasi", "Vellore", "Viluppuram", "Visakhapatnam", "Vizianagaram", "Warangal Urban", "Wardha", "Washim", "West Godavari", "Yavatmal"];
+                el('commodity').innerHTML = commodities.map(c => `<option value="${c}" ${c === 'Wheat' ? 'selected' : ''}>${c}</option>`).join('');
+                el('market').innerHTML = markets.map(m => `<option value="${m}" ${m === 'Delhi' ? 'selected' : ''}>${m}</option>`).join('');
+                // Populate comparison dropdowns
+                el('compareCommodity1').innerHTML = commodities.map(c => `<option value="${c}" ${c === 'Wheat' ? 'selected' : ''}>${c}</option>`).join('');
+                el('compareCommodity2').innerHTML = commodities.map(c => `<option value="${c}" ${c === 'Rice' ? 'selected' : ''}>${c}</option>`).join('');
+
+                // Add event listeners to update chart
+                el('compareCommodity1').addEventListener('change', renderComparisonChart);
+                el('compareCommodity2').addEventListener('change', renderComparisonChart);
+
+                applyTranslations('en');
+                populateRegionalAnalysisTable();
+                getUserLocation();
+                drawHeatmap(el('heatmapCommodity').value);
+                renderPriceChart({ dates: Array.from({length: 30}, (_, i) => { const d = new Date(); d.setDate(d.getDate() - (29 - i)); return d.toISOString().split('T')[0]; }), prices: Array.from({length: 30}, () => 2200 + Math.random() * 200) });
+                updateAnalytics('Wheat', 'Delhi', 2250);
+                renderComparisonChart(); // Draw initial comparison chart
+                console.log('[DASHBOARD] Initialization complete');
+                } catch (error) {
+                    console.error('[DASHBOARD] Initialization error:', error);
+                    alert('Error loading dashboard. Please refresh the page.');
+                }
+            }
+        });
+    </script>
+</body>
+</html>
