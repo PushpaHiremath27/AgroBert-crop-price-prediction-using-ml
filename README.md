@@ -51,7 +51,7 @@ The system integrates:
 ## System Architecture
 
 <div align="center">
-  <img src="./assets/system-architecture.png" alt="System Architecture" width="800" />
+  <img src="./assets/system_architecture.png" alt="System Architecture" width="800" />
 </div>
 
 ---
