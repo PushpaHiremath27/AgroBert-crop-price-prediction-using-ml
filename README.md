@@ -377,7 +377,7 @@ python backend/scripts/performance_test.py
 - **Institution**: Bapuji Institute of Engineering and Technology (BIET), Davanagere
 - **Department**: Artificial Intelligence & Machine Learning
 - **Program**: B.E. AI & ML (4-year)
-- **Academic Year**: 2024-25
+- **Academic Year**: 2025-26
 - **Project Code**: BAI685
 
 ### Development Team
