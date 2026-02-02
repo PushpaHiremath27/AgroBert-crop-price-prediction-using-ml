@@ -488,5 +488,13 @@ We extend our heartfelt thanks to:
 ---
 
 **Built with ❤️  by the AgroBERT Development Team**
+## Team Contribution
+
+- **Pushpa Hiremath**
+  - Data understanding & preprocessing support
+  - Project documentation
+  - Team coordination
+
+
 
 *Last Updated: November 2025*
